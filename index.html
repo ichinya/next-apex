@@ -19,9 +19,10 @@
       <div class="track-hud"><div class="tag">ГОНКА С БОТАМИ</div><h1>Думай на поворот вперёд.</h1><p id="hint">Все едут одновременно. Выбери манёвр и сделай ход.</p></div>
       <section class="race-order" aria-label="Позиции в гонке"><div class="order-title">ТВОЯ ПОЗИЦИЯ <strong id="position">1 / 4</strong></div><ol id="standings"></ol><p id="race-status" aria-live="polite">3 бота · общий ход</p></section>
       <div class="view-tools"><button id="camera" class="glass" title="Обзор трассы (M)">⊞ <span>Вся трасса</span></button></div>
+      <section id="turn-review" class="turn-review" aria-label="Итог последнего хода" aria-live="polite" hidden><div class="review-heading"><span id="review-title">ИТОГ ХОДА</span><strong id="review-speed"></strong></div><ul id="review-events"></ul></section>
       <div class="surface-pill"><span id="surface-dot"></span><span id="surface">Асфальт · хорошее сцепление</span></div>
       <div class="map-box"><canvas id="minimap" width="180" height="150" aria-label="Карта трассы"></canvas><div>ЛЕСНОЕ КОЛЬЦО <span id="progress">0%</span></div></div>
-      <div class="legend"><span class="line green"></span>прогноз* <span class="line amber"></span>обочина <span class="dot"></span>конец хода</div>
+      <div class="legend"><span class="line green"></span>1: манёвр <span class="line cyan"></span>2: накат прямо <span class="line amber"></span>трава</div>
       <div id="finish" class="finish" hidden><span class="eyebrow">ФИНИШ · ЛЕСНОЕ КОЛЬЦО</span><h2>Круг пройден!</h2><p><strong id="result-turns"></strong> ходов</p><div id="result-note"></div><button id="again" class="primary">Повторить гонку ↗</button></div>
     </section>
     <aside class="dashboard">
@@ -31,14 +32,15 @@
       <div class="record"><span>Лучший круг</span><strong id="best">—</strong></div>
       <div class="control-group"><div class="group-title"><h2>Газ / тормоз</h2><span>↑ ↓</span></div><div id="throttle" class="choices" role="group" aria-label="Газ и тормоз"></div><p id="throttle-label" class="selected-label"></p></div>
       <div class="control-group"><div class="group-title"><h2>Руль</h2><span>← →</span></div><div id="steering" class="choices" role="group" aria-label="Поворот руля"></div><p id="steering-label" class="selected-label"></p></div>
-      <div class="forecast"><div class="forecast-head"><span class="eyebrow">СЛЕДУЮЩИЙ ХОД</span><span>1,2 сек</span></div><div class="forecast-stats"><div><strong id="distance">0</strong><span>метров</span></div><div><strong id="next-speed">0</strong><span>км/ч на выходе</span></div></div><p id="risk">Траектория на асфальте</p></div>
+      <div class="forecast"><div class="forecast-head"><span class="eyebrow">1 · ВЫБРАННЫЙ МАНЁВР</span><span>1,2 сек</span></div><div class="forecast-stats"><div><strong id="distance">0</strong><span>метров</span></div><div><strong id="next-speed">0</strong><span>км/ч на выходе</span></div></div><p id="risk">Траектория на асфальте</p><div class="continuation"><span>2 · БЕЗ ГАЗА, РУЛЬ ПРЯМО</span><strong id="second-forecast"></strong></div></div>
       <button id="commit" class="primary">Конец хода <span>ПРОБЕЛ ↗</span></button>
       <div class="bottom-actions"><span id="completed">Сделано ходов: 0</span><button id="restart" title="Начать заново (R)">↻ Заново</button></div>
     </aside>
   </main>
-  <dialog id="help-dialog"><button class="close" id="close-help" aria-label="Закрыть">×</button><span class="eyebrow">БЫСТРО ЕХАТЬ ЛЕГКО</span><h2>А что будет после поворота?</h2><p>Выбери <b>газ или тормоз</b> и <b>поворот руля</b> одновременно. Пунктир показывает весь путь и положение машины в конце хода. <b>*Прогноз не учитывает будущие манёвры соперников.</b> Контакт может изменить траекторию и снизить скорость.</p><p>Каждый ход — <b>1,2 секунды</b>. Скорость сохраняется. На высокой скорости дуга становится шире: тормози до поворота.</p><p>Три бота выбирают газ и руль по тем же правилам. Все четыре машины едут одновременно после «Конца хода». Место определяется по пройденным створам и порядку пересечения финиша.</p><p>Трава замедляет машину и снижает сцепление. Продолжай управлять, чтобы вернуться на асфальт. Проезжай контрольные створы по порядку, следуя стрелкам трассы.</p><div class="help-keys">↑ ↓ газ / тормоз · ← → руль<br>Пробел — ход · M — обзор · R — заново</div><button id="lets-race" class="primary">Поехали ↗</button></dialog>
+  <dialog id="help-dialog"><button class="close" id="close-help" aria-label="Закрыть">×</button><span class="eyebrow">БЫСТРО ЕХАТЬ ЛЕГКО</span><h2>А что будет после поворота?</h2><p>Выбери <b>газ или тормоз</b> и <b>поворот руля</b> одновременно. Яркий пунктир с цифрой <b>1</b> показывает выбранный манёвр. Полупрозрачная линия с цифрой <b>2</b> — ещё 1,2 секунды, если отпустить газ и поставить руль прямо. На асфальте скорость сохранится, на траве — снизится. <b>Это ориентир, второй ход выбираешь заново. Оба прогноза не учитывают будущие манёвры соперников.</b> Контакт может изменить траекторию и снизить скорость.</p><p>Каждый ход — <b>1,2 секунды</b>. Скорость сохраняется. На высокой скорости дуга становится шире: тормози до поворота.</p><p>Три бота выбирают газ и руль по тем же правилам. Все четыре машины едут одновременно после «Конца хода». Место определяется по пройденным створам и порядку пересечения финиша.</p><p>Трава замедляет машину и снижает сцепление. Продолжай управлять, чтобы вернуться на асфальт. Проезжай контрольные створы по порядку, следуя стрелкам трассы.</p><div class="help-keys">↑ ↓ газ / тормоз · ← → руль<br>Пробел — ход · M — обзор · R — заново</div><button id="lets-race" class="primary">Поехали ↗</button></dialog>
   <script src="src/physics.js"></script>
   <script src="src/race.js"></script>
+  <script src="src/planning.js"></script>
   <script src="src/main.js"></script>
 </body>
 </html>

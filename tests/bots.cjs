@@ -30,6 +30,7 @@ assert.ok(P.nearest(recovering.state.x,recovering.state.y).distance<P.WIDTH/2,'A
 const p=P.at(150),q=P.at(230);
 const headOn=R.simulate([{...initial[0],state:{...P.start(),...p,heading:p.angle,motion:p.angle,v:160}},{...initial[1],state:{...P.start(),...q,heading:q.angle+Math.PI,motion:q.angle+Math.PI,v:160}}],{throttle:0,steer:0});
 assert.ok(headOn.paths[0].contacts>0,'Mid-turn contact must be detected even when endpoints would pass');
+assert.ok(headOn.paths[0].contactLoss>0,'The turn report measures actual speed lost to contact');
 assert.ok(headOn.racers[0].state.v<160,'Contact costs speed');
 const finish=P.gates[11],crossing={...P.start(),x:finish.x-Math.cos(finish.angle)*20,y:finish.y-Math.sin(finish.angle)*20,heading:finish.angle,motion:finish.angle,v:100,nextGate:11};
 const tied=[{id:'player',state:{...crossing}},{...initial[1],state:{...crossing,x:crossing.x-Math.sin(finish.angle)*45,y:crossing.y+Math.cos(finish.angle)*45}}];

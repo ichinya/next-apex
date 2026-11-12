@@ -1,15 +1,15 @@
 (() => {
  'use strict';
- const P=window.RacePhysics,R=window.Race,$=id=>document.getElementById(id),canvas=$('race'),ctx=canvas.getContext('2d'),mini=$('minimap'),mc=mini.getContext('2d');
+ const P=window.RacePhysics,R=window.Race,T=window.RacePlanning,$=id=>document.getElementById(id),canvas=$('race'),ctx=canvas.getContext('2d'),mini=$('minimap'),mc=mini.getContext('2d');
  const throttleNames=['Сильно тормозить','Немного тормозить','Сохранить скорость','Немного разогнаться','Сильно разогнаться'];
  const steerNames=['Резко влево','Немного влево','Прямо','Немного вправо','Резко вправо'];
  let state=P.start(),visual={...state},throttle=1,steer=0,turns=0,animation=null,forecast,overview=false,best=null,w=1,h=1,dpr=1,lastTime=0;
- let racers=R.grid(),racerVisuals=racers.map(r=>({...r.state})),lastContact=false;
+ let racers=R.grid(),racerVisuals=racers.map(r=>({...r.state})),secondForecast=null,lastReview=null,cameraAim=null;
  let camera={x:state.x,y:state.y-80,z:1},dust=[],trails=[],sound=false,audio=null;
  try{const saved=Number(localStorage.getItem('apex-forest-best-v1'));if(saved>0&&Number.isFinite(saved))best=saved}catch{}
  function randomGenerator(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
  const random=randomGenerator(14351);
- const world=document.createElement('canvas');world.width=1600;world.height=1500;const g=world.getContext('2d');
+ const world=document.createElement('canvas');world.width=2400;world.height=2300;const g=world.getContext('2d');g.translate(400,400);
  function path(c){c.beginPath();P.track.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath()}
  function line(c,width,color){path(c);c.lineWidth=width;c.strokeStyle=color;c.lineJoin='round';c.stroke()}
  function tree(x,y,r){
@@ -19,7 +19,7 @@
   g.fillStyle='#9ead5950';g.beginPath();g.arc(x-r*.18,y-r*.28,r*.32,0,Math.PI*2);g.fill();
  }
  function bakeWorld(){
-  g.fillStyle='#51623a';g.fillRect(0,0,1600,1500);
+  g.fillStyle='#51623a';g.fillRect(-400,-400,2400,2300);
   for(let i=0;i<17000;i++){const x=random()*1600,y=random()*1500;g.fillStyle=random()>.5?'#a0a26a14':'#16372420';g.fillRect(x,y,1+random()*5,1+random()*3)}
   line(g,P.WIDTH+56,'#778063');line(g,P.WIDTH+36,'#a59d7a');line(g,P.WIDTH+20,'#bab39a');line(g,P.WIDTH+12,'#d3cfc0');line(g,P.WIDTH,'#464c4c');
   // Individually laid kerbs follow both sides of the circuit.
@@ -41,6 +41,9 @@
   // Pit-side painted markers, signboards and tyre stacks.
   for(let i=0;i<7;i++){const p=P.at(P.length-65-i*35);g.save();g.translate(p.x,p.y);g.rotate(p.angle);g.strokeStyle='#e8e6ce70';g.lineWidth=1;g.strokeRect(-11,-42,20,23);g.restore()}
   for(let k of [410,1120,2210,3060]){const p=P.at(k);g.save();g.translate(p.x-Math.sin(p.angle)*110,p.y+Math.cos(p.angle)*110);g.rotate(p.angle+Math.PI/2);g.fillStyle='#142322';g.fillRect(-35,-12,70,24);g.strokeStyle='#acbe7c';g.lineWidth=2;g.strokeRect(-35,-12,70,24);g.fillStyle='#d4e5b4';g.font='bold 10px Segoe UI';g.textAlign='center';g.fillText('A P E X',0,4);g.restore()}
+  // Scenic padding for the wider camera; the driveable bounds stay the same.
+  const borderRandom=randomGenerator(9351);
+  for(let i=0;i<2200;i++){const x=borderRandom()*2400-400,y=borderRandom()*2300-400;if(x>=0&&x<=1600&&y>=0&&y<=1500)continue;tree(x,y,12+borderRandom()*21);}
  }
  bakeWorld();
  function buildControls(id,icons,names,type){const group=$(id);icons.forEach((icon,i)=>{const b=document.createElement('button');b.textContent=icon;b.setAttribute('aria-label',names[i]);b.title=names[i];b.dataset.value=i-2;if(type==='throttle'&&i<2)b.classList.add('brake');b.addEventListener('click',()=>select(type,i-2));group.appendChild(b)})}
@@ -51,15 +54,24 @@
   const order=R.standings(racers),position=order.findIndex(r=>r.id==='player')+1;
   $('position').textContent=`${position} / ${racers.length}`;
   $('standings').innerHTML=order.map((r,i)=>`<li class="${r.id==='player'?'is-player':''}"><span class="racer-swatch" style="background:${r.color}"></span><span>${r.name}</span><small>${r.state.finished?'ФИНИШ':`${Math.min(99,Math.max(0,Math.floor(R.progress(r.state)/P.length*100)))}%`}</small></li>`).join('');
-  $('race-status').textContent=lastContact?'Контакт · потеря скорости':animation?'Все машины в движении':state.finished?'Гонка завершена для тебя':'3 бота · общий ход';
+  $('race-status').textContent=animation?'Все машины в движении':state.finished?'Гонка завершена для тебя':'3 бота · общий ход';
+ }
+ function updateReview(){
+  $('turn-review').hidden=!lastReview||!!animation;
+  if(!lastReview)return;
+  $('review-title').textContent=`ИТОГ ХОДА ${lastReview.turn}`;
+  $('review-speed').textContent=lastReview.speed;
+  $('review-events').innerHTML=lastReview.events.map(e=>`<li class="event-${e.kind}">${e.text}</li>`).join('');
  }
  function update(){
-  forecast=P.simulate(state,throttle,steer);
+  const prediction=T.predict(state,throttle,steer);forecast=prediction.first;secondForecast=prediction.second;
   document.querySelectorAll('#throttle button').forEach(b=>{b.setAttribute('aria-pressed',Number(b.dataset.value)===throttle);b.disabled=!!animation||state.finished});
   document.querySelectorAll('#steering button').forEach(b=>{b.setAttribute('aria-pressed',Number(b.dataset.value)===steer);b.disabled=!!animation||state.finished});
   $('throttle-label').textContent=throttleNames[throttle+2];$('steering-label').textContent=steerNames[steer+2];
   $('turn').textContent=state.finished?turns:turns+1;$('completed').textContent=`Сделано ходов: ${turns}`;$('best').textContent=best?`${best} ходов`:'Первый заезд';
   $('distance').textContent=Math.round(forecast.distance*.3);$('next-speed').textContent=speedText(forecast.state.v);
+  $('second-forecast').textContent=secondForecast?`${speedText(secondForecast.state.v)} км/ч · ${secondForecast.offroad?'на траве':secondForecast.state.finished?'финиш':secondForecast.distance<.5?'остановка':'на асфальте'}`:'Финиш на первом ходу';
+  $('second-forecast').classList.toggle('second-warning',!!secondForecast?.offroad);
   const spinning=Math.abs(steer)>0&&state.v>150;
   $('risk').textContent=forecast.offroad?'Выезд на обочину · потеря сцепления':spinning?'Высокая скорость · широкая дуга':'Траектория на асфальте';
   document.querySelector('.forecast').classList.toggle('warning',forecast.offroad||spinning);
@@ -67,12 +79,13 @@
   $('commit').disabled=!!animation||state.finished;$('commit').innerHTML=animation?'Машина в движении…':state.finished?'Финиш!':'Конец хода <span>ПРОБЕЛ ↗</span>';
   $('restart').disabled=!!animation;
   updateStandings();
-  if(turns>0)$('hint').textContent=forecast.offroad?'Оранжевый участок — трава. Попробуй тормозить или изменить руль.':'Скорость сохранится. Подготовь удобный выход из поворота.';
+  updateReview();
+  $('hint').textContent=forecast.offroad?'Оранжевый участок — трава. Попробуй тормозить или изменить руль.':secondForecast?.offroad?'Сейчас на асфальте. Но накатом на втором ходу вынесет на траву.':'1 — выбранный манёвр. 2 — затем без газа, руль прямо.';
  }
  function beep(freq,duration=.07){if(!sound)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),gain=audio.createGain();o.type='sine';o.frequency.setValueAtTime(freq,audio.currentTime);gain.gain.setValueAtTime(.025,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(gain);gain.connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}}
- function commit(){if(animation||state.finished)return;const race=R.simulate(racers,{throttle,steer});lastContact=false;animation={race,path:race.paths[0],start:performance.now(),duration:1000,lastIndex:0};beep(240);update()}
- function finishTurn(){const race=animation.race;racers=race.racers;lastContact=race.paths[0].contacts>0;state={...racers[0].state};visual={...state};racerVisuals=racers.map(r=>({...r.state}));animation=null;turns++;if(state.finished){const previous=best;if(!best||turns<best){best=turns;try{localStorage.setItem('apex-forest-best-v1',best)}catch{}}const place=R.standings(racers).findIndex(r=>r.id==='player')+1;$('result-turns').textContent=turns;document.querySelector('#finish h2').textContent=place===1?'Победа!':`${place}-е место из 4`;$('result-note').textContent=`${place===1?'Ты первым пересёк финиш.':'Все контрольные створы пройдены.'} `+(!previous?'Первый результат записан.':turns<previous?`Новый рекорд! На ${previous-turns} ходов быстрее.`:`Лучший результат: ${best} ходов.`);$('finish').hidden=false;beep(620,.3)}else beep(370);update()}
- function reset(){if(animation)return;racers=R.grid();state={...racers[0].state};visual={...state};racerVisuals=racers.map(r=>({...r.state}));lastContact=false;turns=0;throttle=1;steer=0;trails=[];dust=[];$('finish').hidden=true;$('hint').textContent='Все едут одновременно. Выбери манёвр и сделай ход.';camera.x=state.x;camera.y=state.y-80;update()}
+ function commit(){if(animation||state.finished)return;const race=R.simulate(racers,{throttle,steer});animation={race,path:race.paths[0],continuation:race.paths[0].state.finished?null:P.simulate(race.paths[0].state,0,0),start:performance.now(),duration:1000,lastIndex:0};beep(240);update()}
+ function finishTurn(){const race=animation.race;lastReview=T.review(racers,race,turns+1);racers=race.racers;state={...racers[0].state};visual={...state};racerVisuals=racers.map(r=>({...r.state}));animation=null;turns++;if(state.finished){const previous=best;if(!best||turns<best){best=turns;try{localStorage.setItem('apex-forest-best-v1',best)}catch{}}const place=R.standings(racers).findIndex(r=>r.id==='player')+1;$('result-turns').textContent=turns;document.querySelector('#finish h2').textContent=place===1?'Победа!':`${place}-е место из 4`;$('result-note').textContent=`${place===1?'Ты первым пересёк финиш.':'Все контрольные створы пройдены.'} `+(!previous?'Первый результат записан.':turns<previous?`Новый рекорд! На ${previous-turns} ходов быстрее.`:`Лучший результат: ${best} ходов.`);$('finish').hidden=false;beep(620,.3)}else beep(370);update()}
+ function reset(){if(animation)return;racers=R.grid();state={...racers[0].state};visual={...state};racerVisuals=racers.map(r=>({...r.state}));lastReview=null;turns=0;throttle=1;steer=0;trails=[];dust=[];$('finish').hidden=true;$('hint').textContent='Все едут одновременно. Выбери манёвр и сделай ход.';camera.x=state.x;camera.y=state.y-80;update()}
  $('commit').addEventListener('click',commit);$('restart').addEventListener('click',reset);$('again').addEventListener('click',reset);
  function toggleCamera(){overview=!overview;$('camera').innerHTML=overview?'⊙ <span>За машиной</span>':'⊞ <span>Вся трасса</span>';$('camera').setAttribute('aria-pressed',overview)}
  $('camera').addEventListener('click',toggleCamera);
@@ -82,7 +95,7 @@
  new ResizeObserver(resize).observe(canvas);resize();
  function car(c,s,ghost=false,scale=1,racer=null){
   c.save();c.translate(s.x,s.y);c.rotate(s.heading);c.scale(scale,scale);
-  if(ghost){c.globalAlpha=.65;c.strokeStyle=forecast.offroad?'#efba72':'#cefc8b';c.lineWidth=1.5;c.setLineDash([4,3]);c.strokeRect(-21,-10,42,20);c.setLineDash([]);c.beginPath();c.moveTo(25,0);c.lineTo(17,-5);c.moveTo(25,0);c.lineTo(17,5);c.stroke();c.restore();return}
+  if(ghost){c.globalAlpha*=.65;c.strokeStyle=ghost==='second'?(secondForecast?.offroad?'#efba72':'#a9dceb'):(forecast.offroad?'#efba72':'#cefc8b');c.lineWidth=1.5;c.setLineDash([4,3]);c.strokeRect(-21,-10,42,20);c.setLineDash([]);c.beginPath();c.moveTo(25,0);c.lineTo(17,-5);c.moveTo(25,0);c.lineTo(17,5);c.stroke();c.restore();return}
   c.fillStyle='#0008';c.beginPath();c.roundRect(-19,-7,44,24,7);c.fill();
   for(const x of [-12,12])for(const y of [-11,11]){c.save();c.translate(x,y);if(x>0)c.rotate((animation?(racer?.action?.steer??steer):0)*.12);c.fillStyle='#111a1c';c.beginPath();c.roundRect(-5,-3,10,6,2);c.fill();c.fillStyle='#82908e';c.fillRect(-3,-3,5,1);c.restore()}
   const colors=racer?.paint||['#1b609c','#59afed','#2786cf','#124778'];const paint=c.createLinearGradient(0,-10,0,10);paint.addColorStop(0,colors[0]);paint.addColorStop(.3,colors[1]);paint.addColorStop(.5,colors[2]);paint.addColorStop(1,colors[3]);c.fillStyle=paint;c.strokeStyle='#102d44';c.lineWidth=1;
@@ -93,11 +106,15 @@
   c.fillStyle='#edf7da';c.fillRect(21,-8,2,4);c.fillRect(21,4,2,4);c.fillStyle='#df6346';c.fillRect(-22,-8,2,4);c.fillRect(-22,4,2,4);c.fillStyle='#102332';c.fillRect(-21,-11,3,22);c.fillStyle='#96c9df';c.fillRect(4,-13,4,3);c.fillRect(4,10,4,3);
   c.restore();
  }
- function drawForecast(t){if(animation||state.finished)return;const samples=forecast.samples;ctx.lineCap='round';ctx.lineWidth=2.7/camera.z;ctx.setLineDash([8/camera.z,7/camera.z]);ctx.lineDashOffset=-t*.005;
+ function drawPrediction(prediction,t,second=false){
+  const samples=prediction.samples,color=second?'#a9dceb':'#c5f46b';
+  ctx.save();ctx.globalAlpha=second ? .46 : 1;ctx.lineCap='round';ctx.lineWidth=(second?2.1:2.7)/camera.z;ctx.setLineDash(second?[3/camera.z,7/camera.z]:[8/camera.z,7/camera.z]);
   let offroad=samples[0].offroad,travel=0,runStart=0;ctx.beginPath();ctx.moveTo(samples[0].x,samples[0].y);
-  for(let i=1;i<samples.length;i++){const a=samples[i-1],b=samples[i];if(b.offroad!==offroad){ctx.strokeStyle=offroad?'#f2b16d':'#c5f46b';ctx.lineDashOffset=-t*.005-runStart;ctx.stroke();ctx.beginPath();ctx.moveTo(a.x,a.y);offroad=b.offroad;runStart=travel}ctx.lineTo(b.x,b.y);travel+=Math.hypot(b.x-a.x,b.y-a.y)}ctx.strokeStyle=offroad?'#f2b16d':'#c5f46b';ctx.lineDashOffset=-t*.005-runStart;ctx.stroke();
-  ctx.setLineDash([]);const end=samples[samples.length-1];car(ctx,end,true);ctx.strokeStyle=forecast.offroad?'#efb36a':'#d5ff9b';ctx.lineWidth=1.3/camera.z;ctx.beginPath();ctx.arc(end.x,end.y,4/camera.z,0,Math.PI*2);ctx.stroke();
+  for(let i=1;i<samples.length;i++){const a=samples[i-1],b=samples[i];if(b.offroad!==offroad){ctx.strokeStyle=offroad?'#f2b16d':color;ctx.lineDashOffset=-t*.005-runStart;ctx.stroke();ctx.beginPath();ctx.moveTo(a.x,a.y);offroad=b.offroad;runStart=travel}ctx.lineTo(b.x,b.y);travel+=Math.hypot(b.x-a.x,b.y-a.y)}ctx.strokeStyle=offroad?'#f2b16d':color;ctx.lineDashOffset=-t*.005-runStart;ctx.stroke();
+  ctx.setLineDash([]);const end=samples[samples.length-1];car(ctx,end,second?'second':true);ctx.restore();
+  const badgeX=second?40:20;ctx.save();ctx.translate(end.x,end.y);ctx.scale(1/camera.z,1/camera.z);ctx.fillStyle='#102124ed';ctx.strokeStyle=prediction.offroad?'#efb36a':color;ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(badgeX,-17,9,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=ctx.strokeStyle;ctx.textAlign='center';ctx.font='bold 10px Segoe UI';ctx.fillText(second?'2':'1',badgeX,-13.5);ctx.restore();
  }
+ function drawForecast(t){if(animation||state.finished)return;if(secondForecast)drawPrediction(secondForecast,t,true);drawPrediction(forecast,t);}
  function drawGate(){if(state.finished)return;const gate=P.gates[state.nextGate];ctx.save();ctx.translate(gate.x,gate.y);ctx.rotate(gate.angle);ctx.strokeStyle='#d0e7ac44';ctx.lineWidth=1.5/camera.z;ctx.setLineDash([5,7]);ctx.beginPath();ctx.moveTo(0,-55);ctx.lineTo(0,55);ctx.stroke();ctx.setLineDash([]);for(const side of [-1,1]){ctx.fillStyle='#d3ecac';ctx.beginPath();ctx.arc(0,side*58,3,0,Math.PI*2);ctx.fill()}ctx.restore()}
  function drawMini(){mc.clearRect(0,0,180,150);mc.save();mc.translate(9,6);mc.scale(.123,.101);mc.translate(-180,-100);line(mc,37,'#64736a');line(mc,20,'#2a3936');const gate=P.gates[Math.min(state.nextGate,11)];mc.fillStyle='#c5f46b';mc.beginPath();mc.arc(gate.x,gate.y,20,0,Math.PI*2);mc.fill();racers.slice(1).forEach((r,i)=>{const s=racerVisuals[i+1];mc.fillStyle=r.color;mc.beginPath();mc.arc(s.x,s.y,19,0,Math.PI*2);mc.fill()});mc.fillStyle='#7bc4f7';mc.strokeStyle='#e0f0f3';mc.lineWidth=6;mc.beginPath();mc.arc(visual.x,visual.y,23,0,Math.PI*2);mc.fill();mc.stroke();mc.restore();const p=state.finished?100:Math.min(99,Math.round(state.nextGate/12*100));$('progress').textContent=p+'%'}
  function frame(now){
@@ -105,9 +122,10 @@
   if(animation){const a=animation,t=Math.min(1,(now-a.start)/a.duration),f=t*(a.path.samples.length-1),i=Math.min(a.path.samples.length-2,Math.floor(f)),u=f-i,p=a.path.samples[i],q=a.path.samples[i+1];visual={...p,x:p.x+(q.x-p.x)*u,y:p.y+(q.y-p.y)*u,v:p.v+(q.v-p.v)*u,heading:p.heading+P.angleDiff(q.heading,p.heading)*u};
    racerVisuals=a.race.paths.map(path=>{const p=path.samples[i],q=path.samples[i+1];return {...p,x:p.x+(q.x-p.x)*u,y:p.y+(q.y-p.y)*u,v:p.v+(q.v-p.v)*u,heading:p.heading+P.angleDiff(q.heading,p.heading)*u}}); for(let n=a.lastIndex+1;n<=i;n+=3){const s=a.path.samples[n];if(s.offroad){dust.push({x:s.x,y:s.y,r:5,life:1});}if(s.v>145&&Math.abs(steer)>0)trails.push({x:s.x,y:s.y,a:s.heading})}a.lastIndex=i;if(trails.length>900)trails.splice(0,trails.length-900);if(t>=1)finishTurn();
   }
-  const target=overview?{x:810,y:750,z:Math.min(w/1450,h/1400)}:{x:visual.x+Math.cos(visual.heading)*65,y:visual.y+Math.sin(visual.heading)*65,z:Math.min(w/650,h/570)*1.12};const smooth=1-Math.exp(-delta*5);
+  const target=T.cameraTarget(visual,animation?animation.path:forecast,animation?animation.continuation:secondForecast,racers,w,h,overview);cameraAim=target;const smooth=1-Math.exp(-delta*5);
   camera.x+=(target.x-camera.x)*smooth;camera.y+=(target.y-camera.y)*smooth;camera.z+=(target.z-camera.z)*smooth;
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#3e5235';ctx.fillRect(0,0,w,h);ctx.save();ctx.translate(w/2,h/2);ctx.scale(camera.z,camera.z);ctx.translate(-camera.x,-camera.y);ctx.drawImage(world,0,0);
+  $('turn-review').dataset.side=w/2+(visual.x-camera.x)*camera.z<w*.55?'right':'left';
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#3e5235';ctx.fillRect(0,0,w,h);ctx.save();ctx.translate(w/2,h/2);ctx.scale(camera.z,camera.z);ctx.translate(-camera.x,-camera.y);ctx.drawImage(world,-400,-400);
   for(let tr of trails){ctx.save();ctx.translate(tr.x,tr.y);ctx.rotate(tr.a);ctx.fillStyle='#14201a33';ctx.fillRect(-2,-10,5,2);ctx.fillRect(-2,8,5,2);ctx.restore()}
   drawGate();drawForecast(now);
   dust=dust.filter(d=>d.life>0);for(let d of dust){d.life-=delta*.7;d.r+=delta*11;ctx.fillStyle=`rgba(196,176,125,${Math.max(0,d.life*.25)})`;ctx.beginPath();ctx.arc(d.x+8*(1-d.life),d.y,d.r,0,Math.PI*2);ctx.fill()}
@@ -120,5 +138,5 @@
  }
  update();requestAnimationFrame(frame);
  // Read-only inspection for deterministic verification; gameplay stays in the controls.
- window.Apex={getState:()=>({...state,turns,throttle,steer,animating:!!animation,overview,best}),getForecast:()=>structuredClone(forecast),getRacers:()=>structuredClone(racers),getVisuals:()=>structuredClone(racerVisuals),getStandings:()=>R.standings(racers).map(r=>r.id)};
+ window.Apex={getState:()=>({...state,turns,throttle,steer,animating:!!animation,overview,best}),getForecast:()=>structuredClone(forecast),getSecondForecast:()=>structuredClone(secondForecast),getReview:()=>structuredClone(lastReview),getCamera:()=>({...camera,target:cameraAim?{...cameraAim}:null}),getRacers:()=>structuredClone(racers),getVisuals:()=>structuredClone(racerVisuals),getStandings:()=>R.standings(racers).map(r=>r.id)};
 })();

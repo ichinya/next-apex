@@ -71,15 +71,15 @@
   const actions=racers.map(r=>r.id==='player'?{...playerAction}:choose(r,racers));
   let states=racers.map(r=>({...r.state}));
   const sample=s=>({...s,offroad:P.nearest(s.x,s.y).distance>P.WIDTH/2});
-  const paths=states.map(s=>({samples:[sample(s)],contacts:0,distance:0}));
+  const paths=states.map(s=>({samples:[sample(s)],contacts:0,contactLoss:0,distance:0}));
   for(let tick=0;tick<Math.round(P.TURN/P.DT);tick++){
    const previous=states;
    states=states.map((s,i)=>P.step(s,actions[i].throttle,actions[i].steer));
-   const touched=contacts(states);
+   const speedsBeforeContact=states.map(s=>s.v),touched=contacts(states);
    states.forEach((s,i)=>{
     if(s.finished&&s.finishTime===undefined)s.finishTime=s.elapsed;
     paths[i].distance+=Math.hypot(s.x-previous[i].x,s.y-previous[i].y);
-    if(touched.has(i))paths[i].contacts++;
+    if(touched.has(i)){paths[i].contacts++;paths[i].contactLoss+=Math.max(0,speedsBeforeContact[i]-s.v);}
     paths[i].samples.push({...sample(s),contact:touched.has(i)});
    });
   }

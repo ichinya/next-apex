@@ -11,20 +11,24 @@ const document={getElementById:id=>elements[id],createElement:()=>new Element(),
 const env={document,console,Math,structuredClone,performance:{now:()=>time},devicePixelRatio:1,ResizeObserver:class{observe(){}},requestAnimationFrame:f=>{raf=f},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)}};env.window=env;env.globalThis=env;
 // Run the unchanged simulation modules natively; only the DOM-facing script
 // needs a VM. This avoids cross-context Math overhead in millions of samples.
-env.RacePhysics=require('../src/physics.js');env.Race=require('../src/race.js');
+env.RacePhysics=require('../src/physics.js');env.Race=require('../src/race.js');env.RacePlanning=require('../src/planning.js');
 vm.createContext(env);vm.runInContext(fs.readFileSync('src/main.js','utf8'),env,{filename:'src/main.js'});
 function key(value,target='BODY'){let prevented=false;keyHandler({key:value,target:{tagName:target},preventDefault(){prevented=true}});return prevented}
 function tick(ms){time+=ms;raf(time)}
 const A=env.Apex;
 assert.equal(elements.throttle.children.length,5);assert.equal(elements.steering.children.length,5);assert.equal(A.getState().turns,0);tick(16);
 const grid=JSON.stringify(A.getRacers());assert.equal(A.getRacers().length,4);tick(600);assert.equal(JSON.stringify(A.getRacers()),grid,'Bots wait during planning');assert.equal((elements.standings.innerHTML.match(/<li /g)||[]).length,4);
+assert.equal(elements['turn-review'].hidden,true);assert.ok(A.getSecondForecast());assert.ok(A.getCamera().target.z>0);
 elements.throttle.children[4].click();assert.equal(A.getState().throttle,2);
+assert.deepEqual(A.getSecondForecast(),env.RacePhysics.simulate(A.getForecast().state,0,0));
 const expected=A.getForecast().state;assert.ok(key(' ','BUTTON'),'Space prevents the focused control from swallowing the command');assert.ok(A.getState().animating);key('ArrowRight');assert.equal(A.getState().steer,0,'Steering is locked during animation');key(' ');tick(500);assert.equal(JSON.stringify(A.getRacers()),grid,'Logical state changes only on completing the turn');A.getVisuals().forEach((s,i)=>assert.ok(Math.hypot(s.x-A.getRacers()[i].state.x,s.y-A.getRacers()[i].state.y)>1,'Every car animates during the same turn'));tick(600);
 assert.equal(A.getState().turns,1,'A second commit during animation cannot add a turn');assert.equal(A.getState().x,expected.x);assert.equal(A.getState().v,expected.v);assert.ok(!A.getState().animating);
+assert.equal(elements['turn-review'].hidden,false);assert.equal(A.getReview().turn,1);assert.match(elements['review-speed'].textContent,/→/);const review=JSON.stringify(A.getReview());key('ArrowRight');assert.equal(JSON.stringify(A.getReview()),review,'Changing the next choice preserves the previous result');
 key('r');assert.equal(A.getState().turns,0);assert.equal(JSON.stringify(A.getRacers()),grid,'Restart resets all opponents');key('m');assert.ok(A.getState().overview);key('m');assert.ok(!A.getState().overview);
+assert.equal(A.getReview(),null);assert.equal(elements['turn-review'].hidden,true);
 elements.help.click();assert.ok(elements['help-dialog'].open);key(' ');assert.ok(!A.getState().animating);elements['close-help'].click();
 longestStroke=0;tick(16);assert.ok(longestStroke>60,'Forecast must stroke a continuous path, not restart the dash at every sample');
 for(const [throttle,steer] of JSON.parse(fs.readFileSync('tests/race-replay.json','utf8'))){elements.throttle.children[throttle+2].click();elements.steering.children[steer+2].click();elements.commit.click();tick(1100)}
 assert.ok(A.getState().finished);assert.equal(elements.finish.hidden,false);assert.equal(A.getState().best,A.getState().turns);assert.equal(storage.get('apex-forest-best-v1'),A.getState().turns);elements.again.click();assert.equal(A.getState().turns,0);assert.equal(elements.finish.hidden,true);assert.ok(A.getState().best>0);
 assert.match(elements.finishHeading.textContent,/Победа|место/);
-const report='PASS: boot, controls, keyboard, all 4 cars animate together, bots wait during planning, no double turn, exact free-road forecast, all racers reset, standings, map, help, full-race finish, best score and replay';fs.writeFileSync('output/interface-test-report.txt',report);console.log(report);
+const report='PASS: boot, controls, keyboard, all 4 cars animate together, bots wait during planning, no double turn, exact free-road forecast, neutral second-turn continuation, camera target, visible turn feedback, feedback persists while choosing, all racers and feedback reset, standings, map, help, full-race finish, best score and replay';fs.writeFileSync('output/interface-test-report.txt',report);console.log(report);
