@@ -1,0 +1,82 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - text: A
+        - generic [ref=e5]: ↗
+      - generic [ref=e6]:
+        - strong [ref=e7]: АПЕКС
+        - generic [ref=e8]: ПОШАГОВАЯ ГОНКА
+    - generic [ref=e11]:
+      - text: Лесное кольцо
+      - generic [ref=e12]: Одиночный заезд · 1 круг
+    - button "Как играть" [ref=e13] [cursor=pointer]: "? Как играть"
+  - main [ref=e14]:
+    - region "Гоночная трасса" [ref=e15]:
+      - generic "Синяя машина на лесной трассе. Зелёная линия показывает следующий манёвр." [ref=e16]
+      - generic:
+        - generic: TIME ATTACK
+        - heading "Думай на поворот вперёд." [level=1]
+        - paragraph: Выбери газ и руль. Посмотри на дугу. Сделай ход.
+      - button "⊞ Вся трасса" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: Асфальт · хорошее сцепление
+      - generic [ref=e22]:
+        - generic "Карта трассы" [ref=e23]
+        - generic [ref=e24]:
+          - text: ЛЕСНОЕ КОЛЬЦО
+          - generic [ref=e25]: 0%
+      - generic [ref=e26]: прогноз обочина конец хода
+    - complementary [ref=e30]:
+      - generic [ref=e31]: ПЛАНИРОВАНИЕ
+      - generic [ref=e34]:
+        - text: Ход
+        - generic [ref=e35]: "1"
+        - generic [ref=e36]: КРУГ 1 / 1
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - strong [ref=e39]: "76"
+          - text: км/ч
+        - generic [ref=e40]: ТЕКУЩАЯ СКОРОСТЬ
+      - generic [ref=e43]:
+        - generic [ref=e44]: Лучший круг
+        - strong [ref=e45]: Первый заезд
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - heading "Газ / тормоз" [level=2] [ref=e48]
+          - generic [ref=e49]: ↑ ↓
+        - group "Газ и тормоз" [ref=e50]:
+          - button "Сильно тормозить" [ref=e51] [cursor=pointer]: ↓↓
+          - button "Немного тормозить" [ref=e52] [cursor=pointer]: ↓
+          - button "Сохранить скорость" [ref=e53] [cursor=pointer]: −
+          - button "Немного разогнаться" [pressed] [ref=e54] [cursor=pointer]: ↑
+          - button "Сильно разогнаться" [ref=e55] [cursor=pointer]: ↑↑
+        - paragraph [ref=e56]: Немного разогнаться
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - heading "Руль" [level=2] [ref=e59]
+          - generic [ref=e60]: ← →
+        - group "Поворот руля" [ref=e61]:
+          - button "Резко влево" [ref=e62] [cursor=pointer]: ↶
+          - button "Немного влево" [ref=e63] [cursor=pointer]: ↖
+          - button "Прямо" [pressed] [ref=e64] [cursor=pointer]: ↑
+          - button "Немного вправо" [ref=e65] [cursor=pointer]: ↗
+          - button "Резко вправо" [ref=e66] [cursor=pointer]: ↷
+        - paragraph [ref=e67]: Прямо
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e70]: СЛЕДУЮЩИЙ ХОД
+          - generic [ref=e71]: 1,2 сек
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - strong [ref=e74]: "33"
+            - generic [ref=e75]: метров
+          - generic [ref=e76]:
+            - strong [ref=e77]: "120"
+            - generic [ref=e78]: км/ч на выходе
+        - paragraph [ref=e79]: Траектория на асфальте
+      - button "Конец хода ПРОБЕЛ ↗" [ref=e80] [cursor=pointer]:
+        - text: Конец хода
+        - generic [ref=e81]: ПРОБЕЛ ↗
+      - generic [ref=e82]:
+        - generic [ref=e83]: "Сделано ходов: 0"
+        - button "↻ Заново" [ref=e84] [cursor=pointer]
