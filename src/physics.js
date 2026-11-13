@@ -11,8 +11,27 @@
  }
  let length=0;
  track.forEach((p,i)=>{p.s=length;const q=track[(i+1)%track.length];p.dx=q.x-p.x;p.dy=q.y-p.y;p.len=Math.hypot(p.dx,p.dy);length+=p.len;p.angle=Math.atan2(p.dy,p.dx)});
- function nearest(x,y){let best={distance:Infinity};for(let i=0;i<track.length;i++){const p=track[i],u=Math.max(0,Math.min(1,((x-p.x)*p.dx+(y-p.y)*p.dy)/(p.len*p.len))),px=p.x+u*p.dx,py=p.y+u*p.dy,d=Math.hypot(x-px,y-py);if(d<best.distance)best={distance:d,x:px,y:py,s:p.s+p.len*u,angle:p.angle,index:i}}return best}
- function at(s){s=(s%length+length)%length;let p=track[0];for(let i=0;i<track.length;i++){if(track[i].s>s)break;p=track[i]}const u=(s-p.s)/p.len;return {x:p.x+p.dx*u,y:p.y+p.dy*u,angle:p.angle}}
+ // Static segment BVH: exact projections, but only nearby segments are visited.
+ // Keep original segment indices to preserve the tie at shared endpoints.
+ function node(indices){
+  const b={minX:Infinity,minY:Infinity,maxX:-Infinity,maxY:-Infinity};
+  for(const i of indices){const p=track[i],q=track[(i+1)%track.length];b.minX=Math.min(b.minX,p.x,q.x);b.minY=Math.min(b.minY,p.y,q.y);b.maxX=Math.max(b.maxX,p.x,q.x);b.maxY=Math.max(b.maxY,p.y,q.y);}
+  if(indices.length<=8)b.indices=indices;
+  else{const axis=b.maxX-b.minX>b.maxY-b.minY?'x':'y';indices.sort((i,j)=>track[i][axis]-track[j][axis]);const middle=indices.length>>1;b.left=node(indices.slice(0,middle));b.right=node(indices.slice(middle));}
+  return b;
+ }
+ const spatial=node(track.map((_,i)=>i));
+ function nearest(x,y){
+  let distance=Infinity,index=Infinity,bx=0,by=0,bu=0;
+  const bound=b=>{const dx=Math.max(b.minX-x,0,x-b.maxX),dy=Math.max(b.minY-y,0,y-b.maxY);return dx*dx+dy*dy;};
+  function visit(b){
+   if(bound(b)>distance*distance+1e-9)return;
+   if(b.indices){for(const i of b.indices){const p=track[i],u=Math.max(0,Math.min(1,((x-p.x)*p.dx+(y-p.y)*p.dy)/(p.len*p.len))),px=p.x+u*p.dx,py=p.y+u*p.dy,d=Math.hypot(x-px,y-py);if(d<distance||(d===distance&&i<index)){distance=d;index=i;bx=px;by=py;bu=u;}}}
+   else if(bound(b.left)<bound(b.right)){visit(b.left);visit(b.right);}else{visit(b.right);visit(b.left);}
+  }
+  visit(spatial);const p=track[index];return {distance,x:bx,y:by,s:p.s+p.len*bu,angle:p.angle,index};
+ }
+ function at(s){s=(s%length+length)%length;let low=0,high=track.length;while(low+1<high){const mid=(low+high)>>1;if(track[mid].s<=s)low=mid;else high=mid;}const p=track[low],u=(s-p.s)/p.len;return {x:p.x+p.dx*u,y:p.y+p.dy*u,angle:p.angle}}
  const gates=Array.from({length:12},(_,i)=>at(length*(i+1)/12));
  function start(){const p=at(28);return {x:p.x,y:p.y,heading:p.angle,motion:p.angle,v:70,nextGate:0,finished:false,elapsed:0}}
  function angleDiff(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}

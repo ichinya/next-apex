@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 const S=.1;
 export const CAR_URL=`${import.meta.env.BASE_URL}assets/blender/41bd9781-8e6b-4535-89a1-3876273f0b20/model.glb`;
 function randomGenerator(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};}
@@ -47,20 +48,38 @@ export async function createScenery(P,racers){
  // A mixed, volumetric canopy with individual trunks and three crown layers.
  const random=randomGenerator(14351),trees=[];
  for(let i=0;i<3100;i++){const x=random()*2300-350,z=random()*2200-350,r=18+random()*21;if(P.nearest(x,z).distance<105+r*.8)continue;trees.push({x:x*S,z:z*S,r:r*S,h:3.2+random()*4.5,pine:random()<.24,tint:random()});}
- const trunks=instances(scene,new THREE.CylinderGeometry(.17,.26,1,7),standard('#53432e'),trees.length),crowns=[];
- for(let layer=0;layer<3;layer++)crowns.push(instances(scene,new THREE.IcosahedronGeometry(1,1),standard('#ffffff',{flatShading:true}),trees.length));
+ // Spatial batches let both the camera and the shadow camera cull the forest.
+ // One world-sized InstancedMesh submits every tree even with most offscreen.
+ const chunks=new Map(),trunkGeometry=new THREE.CylinderGeometry(.17,.26,1,7),crownGeometry=new THREE.IcosahedronGeometry(1,1),trunkMaterial=standard('#53432e'),crownMaterial=standard('#ffffff',{flatShading:true});
+ trees.forEach((t,i)=>{const key=`${Math.floor(t.x/24)},${Math.floor(t.z/24)}`;if(!chunks.has(key))chunks.set(key,[]);chunks.get(key).push({...t,index:i});});
  const greens=['#4c7138','#5e7e3e','#78934e','#3d653c','#7b8b49'];
- trees.forEach((t,i)=>{
+ for(const batch of chunks.values()){
+ const trunks=instances(scene,trunkGeometry,trunkMaterial,batch.length),crowns=instances(scene,crownGeometry,crownMaterial,batch.length*3);
+ batch.forEach((t,i)=>{
   o.position.set(t.x,t.h*.35,t.z);o.rotation.set(0,t.tint*6,0);o.scale.set(1,t.h*.7,1);o.updateMatrix();trunks.setMatrixAt(i,o.matrix);
-  crowns.forEach((c,layer)=>{const size=t.r*(1-layer*.19);o.position.set(t.x+(layer-1)*t.r*.18,t.h*.55+layer*t.h*.20,t.z+Math.sin(i)*layer*.25);o.scale.set(size,size*(t.pine?1.25:.72),size*.88);o.updateMatrix();c.setMatrixAt(i,o.matrix);c.setColorAt(i,new THREE.Color(greens[(Math.floor(t.tint*5)+layer)%greens.length]));});
+  for(let layer=0;layer<3;layer++){const size=t.r*(1-layer*.19);o.position.set(t.x+(layer-1)*t.r*.18,t.h*.55+layer*t.h*.20,t.z+Math.sin(t.index)*layer*.25);o.scale.set(size,size*(t.pine?1.25:.72),size*.88);o.updateMatrix();crowns.setMatrixAt(i*3+layer,o.matrix);crowns.setColorAt(i*3+layer,new THREE.Color(greens[(Math.floor(t.tint*5)+layer)%greens.length]));}
  });
+ trunks.computeBoundingSphere();crowns.computeBoundingSphere();
+ }
  const rocks=[];for(let i=0;i<110;i++){const x=150+random()*1250,z=100+random()*1250;if(P.nearest(x,z).distance<100)continue;rocks.push({x:x*S,z:z*S,scale:.3+random()*.65});}
  const rockMesh=instances(scene,new THREE.DodecahedronGeometry(1,0),standard('#8a8d76',{flatShading:true}),rocks.length);rocks.forEach((r,i)=>{o.position.set(r.x,r.scale*.35,r.z);o.scale.set(r.scale,r.scale*.65,r.scale*.8);o.rotation.set(i*.3,i*.7,0);o.updateMatrix();rockMesh.setMatrixAt(i,o.matrix);});
  const sun=new THREE.DirectionalLight('#fff1c9',2.8);sun.position.set(30,90,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=sun.shadow.camera.bottom=-65;sun.shadow.camera.right=sun.shadow.camera.top=65;sun.shadow.camera.near=1;sun.shadow.camera.far=220;sun.shadow.bias=-.0004;sun.shadow.normalBias=.035;sun.shadow.radius=3;scene.add(sun,sun.target);
  scene.add(new THREE.HemisphereLight('#d8e8ed','#5b593d',2.5));
  const carAsset=await new GLTFLoader().loadAsync(CAR_URL),models=[];
+ // Bake the stationary car parts once per material, retaining separate steering
+ // wheels. The original Blender geometry and its lighting remain unchanged.
+ carAsset.scene.updateMatrixWorld(true);const carTemplate=new THREE.Group(),parts=new Map();
+ carAsset.scene.traverse(mesh=>{
+  if(!mesh.isMesh)return;
+  if(mesh.name.startsWith('wheel_front')){const wheel=mesh.clone();mesh.matrixWorld.decompose(wheel.position,wheel.quaternion,wheel.scale);carTemplate.add(wheel);return;}
+  if(!parts.has(mesh.material))parts.set(mesh.material,[]);
+  const geometry=mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+  if(!geometry.attributes.uv)geometry.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count*2),2));
+  parts.get(mesh.material).push(geometry);
+ });
+ for(const [material,geometries] of parts){const merged=mergeGeometries(geometries);if(!merged)throw new Error('Car batching failed');carTemplate.add(new THREE.Mesh(merged,material));geometries.forEach(g=>g.dispose());}
  for(const racer of racers){
-  const model=carAsset.scene.clone(true);model.name=`car-${racer.id}`;
+  const model=carTemplate.clone(true);model.name=`car-${racer.id}`;
   const materials=new Map();model.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=mesh.receiveShadow=true;const original=mesh.material;if(!materials.has(original)){const m=original.clone();if(m.name==='rally_paint')m.color.set(racer.id==='player'?'#1472bc':racer.color);if(m.name==='headlights'){m.emissive.set('#e9d799');m.emissiveIntensity=.4;}materials.set(original,m);}mesh.material=materials.get(original);});
   const wheels=[];model.traverse(node=>{if(node.name.startsWith('wheel_front'))wheels.push({node,base:node.quaternion.clone()});});
   scene.add(model);models.push({model,wheels});
@@ -68,5 +87,7 @@ export async function createScenery(P,racers){
  const marker=new THREE.Mesh(new THREE.RingGeometry(2.55,2.66,48),new THREE.MeshBasicMaterial({color:'#9cddff',transparent:true,opacity:.9,depthWrite:false,depthTest:false}));marker.rotation.x=-Math.PI/2;marker.renderOrder=12;scene.add(marker);
  const gateGroup=new THREE.Group(),gateMaterial=standard('#b9e377',{emissive:'#45531c',emissiveIntensity:.2});
  for(const side of [-1,1]){const cone=new THREE.Mesh(new THREE.ConeGeometry(.25,.65,6),gateMaterial);cone.position.set(0,.35,side*5.95);gateGroup.add(cone);}scene.add(gateGroup);
- return {scene,models,sun,marker,gateGroup,treeCount:trees.length,modelURL:CAR_URL};
+ // Static scenery matrices never need to be rebuilt during a turn.
+ scene.updateMatrixWorld(true);scene.traverse(object=>{if(object.isInstancedMesh||object===ground)object.matrixAutoUpdate=false;});
+ return {scene,models,sun,marker,gateGroup,treeCount:trees.length,forestChunks:chunks.size,carMeshes:carTemplate.children.length,modelURL:CAR_URL};
 }

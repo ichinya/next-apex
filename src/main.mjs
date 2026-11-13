@@ -49,7 +49,7 @@ function finishTurn(){
  }
 }
 function reset(){if(!ready||!session.reset())return;sound.stop();gsap.killTweensOf($('finish'));$('finish').hidden=true;$('camera').innerHTML='⊞ <span>Вся трасса</span>';$('camera').setAttribute('aria-pressed',false);view.started=false;update();}
-function camera(){if(!ready)return;session.overview=!session.overview;$('camera').innerHTML=session.overview?'⊙ <span>За машиной</span>':'⊞ <span>Вся трасса</span>';$('camera').setAttribute('aria-pressed',session.overview);}
+function camera(){if(!ready)return;session.overview=!session.overview;view.invalidate();$('camera').innerHTML=session.overview?'⊙ <span>За машиной</span>':'⊞ <span>Вся трасса</span>';$('camera').setAttribute('aria-pressed',session.overview);}
 $('commit').onclick=commit;$('restart').onclick=$('again').onclick=reset;$('camera').onclick=camera;
 $('sound').onclick=()=>{sound.toggle();$('sound').setAttribute('aria-pressed',sound.enabled);$('sound').title=sound.enabled?'Выключить звук':'Включить звук';$('sound').setAttribute('aria-label',$('sound').title);if(sound.enabled)setTimeout(()=>sound.play('select'),30);};
 $('help').onclick=()=>$('help-dialog').showModal();$('close-help').onclick=$('lets-race').onclick=()=>$('help-dialog').close();
@@ -66,7 +66,7 @@ function frame(now){
  const moving=!!session.animation,s=session.visuals[0];
  if(moving&&s.contact&&!contactPlayed){sound.play('contact');contactPlayed=true;}
  if(moving&&s.offroad&&!grassPlayed){sound.play('grass');grassPlayed=true;}
- if(!moving&&now-lastRendered<32)return;lastRendered=now;
+ if(!view.needsDraw(session)||(!moving&&now-lastRendered<32))return;lastRendered=now;
  const result=view.draw(session,delta);$('turn-review').dataset.side=result.playerScreenX<view.width*.55?'right':'left';
  $('speed').textContent=kmh(s.v);$('speed-bar').style.width=(s.v/P.MAX_SPEED*100)+'%';const offroad=P.nearest(s.x,s.y).distance>P.WIDTH/2;$('surface').textContent=offroad?'Обочина · меньше сцепление':'Асфальт · хорошее сцепление';$('surface-dot').style.background=offroad?'#efb36a':'#c5f46b';drawMini();
 }

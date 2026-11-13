@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "test": "node tests/physics.cjs && node tests/planning.cjs && node tests/rapier.cjs && node tests/bots.cjs && node tests/interface.cjs"
+    "test": "node tests/physics.cjs && node tests/spatial.cjs && node tests/planning.cjs && node tests/rapier.cjs && node tests/bots.cjs && node tests/interface.cjs"
   },
   "dependencies": {
     "three": "0.187.0",
