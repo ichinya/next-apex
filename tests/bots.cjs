@@ -1,3 +1,4 @@
+(async()=>{const {initializePhysics}=await import('../src/rapier.mjs');await initializePhysics();
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const P=require('../src/physics.js'),R=require('../src/race.js');
@@ -41,3 +42,5 @@ assert.equal(R.standings([later,earlier])[0].id,'first','Sub-turn finish time de
 fs.writeFileSync('tests/race-replay.json',JSON.stringify(actions.slice(0,finishTurns.player)));
 const report={passed:true,finishTurns,order:order.map(r=>r.name),brakingDrivers:[...brakes],offroadDrivers:[...offroad],midTurnContact:true,sameTurnFinish:true,grassRecovery:true,checks:'same physics and clock; ordered gates; all four finish; input immutability; braking; contacts; finish timing; grass recovery'};
 fs.mkdirSync('output',{recursive:true});fs.writeFileSync('output/bots-test-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+
+})().catch(e=>{console.error(e);process.exitCode=1;});

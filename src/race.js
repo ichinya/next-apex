@@ -33,6 +33,9 @@
   const start=P.nearest(state.x,state.y),others=racers.filter(r=>r.id!==racer.id&&!r.state.finished&&Math.hypot(r.state.x-state.x,r.state.y-state.y)<330).map(r=>P.simulate(r.state,0,0).samples);
   let best;
   for(let throttle=-2;throttle<=2;throttle++)for(let steer=-2;steer<=2;steer++){
+   // At walking pace a stationary choice cannot turn the wheels into a route
+   // back to the road. Crawl forward so recovery remains an ordinary manoeuvre.
+   if(state.v<12&&throttle<=0)continue;
    const sim=P.simulate(state,throttle,steer),end=P.nearest(sim.state.x,sim.state.y);
    let advance=end.s-start.s;if(advance<-P.length/2)advance+=P.length;if(advance>P.length/2)advance-=P.length;
    const future=P.at(end.s+Math.max(80,sim.state.v*.8)),bend=Math.abs(P.angleDiff(future.angle,end.angle));
@@ -48,34 +51,19 @@
   }
   return {throttle:best.throttle,steer:best.steer};
  }
- // Two circles along each chassis prevent cars passing through one another
- // between turn endpoints. At the speed cap a tick travels at most 3.6 units.
- function contacts(states){
-  const touched=new Set();
-  for(let i=0;i<states.length;i++)for(let j=i+1;j<states.length;j++){
-   const a=states[i],b=states[j];if(a.finished||b.finished||Math.hypot(a.x-b.x,a.y-b.y)>48)continue;
-   let hit=false;
-   for(const pa of [-11,11])for(const pb of [-11,11]){
-    const dx=b.x+Math.cos(b.heading)*pb-a.x-Math.cos(a.heading)*pa,dy=b.y+Math.sin(b.heading)*pb-a.y-Math.sin(a.heading)*pa,d=Math.hypot(dx,dy);
-    if(d>=22)continue;
-    const nx=d>.001?dx/d:Math.cos(a.heading+Math.PI/2),ny=d>.001?dy/d:Math.sin(a.heading+Math.PI/2),overlap=(22-d)/2+.01;
-    a.x-=nx*overlap;a.y-=ny*overlap;b.x+=nx*overlap;b.y+=ny*overlap;hit=true;
-    const closing=(Math.cos(a.motion)*a.v-Math.cos(b.motion)*b.v)*nx+(Math.sin(a.motion)*a.v-Math.sin(b.motion)*b.v)*ny;
-    if(closing>1){a.v=Math.max(0,a.v-closing*.3);b.v=Math.max(0,b.v-closing*.3);}
-   }
-   if(hit){touched.add(i);touched.add(j);}
-  }
-  return touched;
- }
+ let contactFactory=null;
+ function setContactEngine(factory){contactFactory=factory;}
  function simulate(racers,playerAction){
   const actions=racers.map(r=>r.id==='player'?{...playerAction}:choose(r,racers));
   let states=racers.map(r=>({...r.state}));
   const sample=s=>({...s,offroad:P.nearest(s.x,s.y).distance>P.WIDTH/2});
   const paths=states.map(s=>({samples:[sample(s)],contacts:0,contactLoss:0,distance:0}));
-  for(let tick=0;tick<Math.round(P.TURN/P.DT);tick++){
+  if(!contactFactory)throw new Error('Rapier must be initialized before racing');
+  const contactEngine=contactFactory(states);
+  try{for(let tick=0;tick<Math.round(P.TURN/P.DT);tick++){
    const previous=states;
    states=states.map((s,i)=>P.step(s,actions[i].throttle,actions[i].steer));
-   const speedsBeforeContact=states.map(s=>s.v),touched=contacts(states);
+   const speedsBeforeContact=states.map(s=>s.v),touched=contactEngine.resolve(previous,states);
    states.forEach((s,i)=>{
     if(s.finished&&s.finishTime===undefined)s.finishTime=s.elapsed;
     paths[i].distance+=Math.hypot(s.x-previous[i].x,s.y-previous[i].y);
@@ -83,8 +71,9 @@
     paths[i].samples.push({...sample(s),contact:touched.has(i)});
    });
   }
+  }finally{contactEngine.dispose();}
   paths.forEach((p,i)=>{p.state=states[i];p.offroad=p.samples.some(s=>s.offroad)});
   return {racers:racers.map((r,i)=>({...r,state:states[i],action:actions[i]})),paths};
  }
- const api={grid,choose,simulate,standings,progress,contacts};root.Race=api;if(typeof module!=='undefined')module.exports=api;
+ const api={grid,choose,simulate,standings,progress,setContactEngine};root.Race=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

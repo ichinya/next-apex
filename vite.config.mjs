@@ -1,0 +1,2 @@
+import {defineConfig} from 'vite';
+export default defineConfig({base:'./',build:{target:'es2022',chunkSizeWarningLimit:4500,rolldownOptions:{output:{strictExecutionOrder:true,codeSplitting:{groups:[{name:'rapier',test:/node_modules[\\/]@dimforge[\\/]/,priority:30},{name:'three',test:/node_modules[\\/]three[\\/]/,priority:20},{name:'effects',test:/node_modules[\\/](postprocessing|n8ao|three\.quarks|quarks\.core)[\\/]/,priority:15},{name:'ui-audio',test:/node_modules[\\/](gsap|zzfx)[\\/]/,priority:10}]}}}}});

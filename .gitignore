@@ -2,6 +2,7 @@ export/
 .DS_Store
 .studio/
 node_modules
+.npm-cache/
 .git.studio-backup
 dist/
 output/

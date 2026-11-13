@@ -16,6 +16,12 @@
  const gates=Array.from({length:12},(_,i)=>at(length*(i+1)/12));
  function start(){const p=at(28);return {x:p.x,y:p.y,heading:p.angle,motion:p.angle,v:70,nextGate:0,finished:false,elapsed:0}}
  function angleDiff(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}
+ function advanceGates(prev,s){
+  s.nextGate=prev.nextGate;s.finished=prev.finished;
+  const gate=gates[s.nextGate];
+  if(gate){const tx=Math.cos(gate.angle),ty=Math.sin(gate.angle),before=(prev.x-gate.x)*tx+(prev.y-gate.y)*ty,after=(s.x-gate.x)*tx+(s.y-gate.y)*ty,cross=Math.abs((s.x-gate.x)*-ty+(s.y-gate.y)*tx);if(before<=0&&after>0&&cross<WIDTH*.72){s.nextGate++;if(s.nextGate===gates.length)s.finished=true}}
+  return s;
+ }
  function step(prev,throttle,steer,dt=DT){
   const s={...prev};if(s.finished)return s;
   const road=nearest(s.x,s.y).distance<=WIDTH/2;
@@ -25,15 +31,13 @@
   const yaw=Math.max(-limit,Math.min(limit,desired));
   s.heading+=yaw*dt;
   s.motion+=angleDiff(s.heading,s.motion)*Math.min(1,dt*(road?9:3));
-  const oldX=s.x,oldY=s.y;
   s.x+=Math.cos(s.motion)*s.v*dt;s.y+=Math.sin(s.motion)*s.v*dt;
   if(s.x<80||s.x>1490||s.y<60||s.y>1470){s.x=Math.max(80,Math.min(1490,s.x));s.y=Math.max(60,Math.min(1470,s.y));s.v*=.5}
-  const gate=gates[s.nextGate];
-  if(gate){const tx=Math.cos(gate.angle),ty=Math.sin(gate.angle),before=(oldX-gate.x)*tx+(oldY-gate.y)*ty,after=(s.x-gate.x)*tx+(s.y-gate.y)*ty,cross=Math.abs((s.x-gate.x)*-ty+(s.y-gate.y)*tx);if(before<=0&&after>0&&cross<WIDTH*.72){s.nextGate++;if(s.nextGate===gates.length)s.finished=true}}
+  advanceGates(prev,s);
   s.elapsed+=dt;
   return s;
  }
  function simulate(state,throttle,steer){let s={...state};const samples=[{...s,offroad:nearest(s.x,s.y).distance>WIDTH/2}],count=Math.round(TURN/DT);let distance=0;for(let i=0;i<count;i++){const next=step(s,throttle,steer);distance+=Math.hypot(next.x-s.x,next.y-s.y);s=next;samples.push({...s,offroad:nearest(s.x,s.y).distance>WIDTH/2})}return {state:s,samples,distance,offroad:samples.some(p=>p.offroad)}}
- const api={DT,TURN,WIDTH,MAX_SPEED,track,length,gates,nearest,at,start,step,simulate,angleDiff};
+ const api={DT,TURN,WIDTH,MAX_SPEED,track,length,gates,nearest,at,start,step,simulate,angleDiff,advanceGates};
  root.RacePhysics=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

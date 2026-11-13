@@ -1,3 +1,4 @@
+(async()=>{const {initializePhysics}=await import('../src/rapier.mjs');await initializePhysics();
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const P=require('../src/physics.js'),R=require('../src/race.js'),T=require('../src/planning.js');
 const initial=P.start(),snapshot=structuredClone(initial);
@@ -34,3 +35,5 @@ const grassReview=T.review(grassBefore,grassResult,1);assert.ok(grassReview.even
 const roadTurn=R.simulate(before,{throttle:1,steer:0});assert.equal(roadTurn.paths[0].contactLoss,0);assert.deepEqual(roadTurn.racers[0].state,P.simulate(before[0].state,1,0).state,'Presentation telemetry leaves physics unchanged');
 const report={passed:true,cameraScenarios:checkedFrames,secondTurn:'coasting and straight steering; continuous join; no mutation or extra executed turn',camera:'both paths fit portrait and landscape; faster speed reveals more road',feedback:'gained/lost places; measured contact loss; non-braking contact; grass slowdown; unchanged physics'};
 fs.writeFileSync('output/planning-test-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+
+})().catch(e=>{console.error(e);process.exitCode=1;});

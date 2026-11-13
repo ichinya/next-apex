@@ -11,11 +11,12 @@
   <header class="topbar">
     <div class="brand"><span class="brand-icon">A<span>↗</span></span><div><strong>АПЕКС</strong><small>ПОШАГОВАЯ ГОНКА</small></div></div>
     <div class="track-title"><i></i><div>Лесное кольцо<small>Ты и 3 соперника · 1 круг</small></div></div>
-    <button id="help" class="subtle" aria-label="Как играть">? <span>Как играть</span></button>
+    <div class="top-actions"><button id="sound" class="subtle sound-button" aria-label="Выключить звук" title="Выключить звук" aria-pressed="true">♫</button><button id="help" class="subtle" aria-label="Как играть">? <span>Как играть</span></button></div>
   </header>
   <main>
     <section class="race-view" aria-label="Гоночная трасса">
       <canvas id="race" aria-label="Синяя машина на лесной трассе. Зелёная линия показывает следующий манёвр."></canvas>
+      <div id="boot" class="boot"><span class="eyebrow">ЛЕСНОЕ КОЛЬЦО</span><h2>Готовим машины к старту…</h2><p>Три соперника. Один круг. Каждый манёвр имеет значение.</p><span class="boot-line"></span></div>
       <div class="track-hud"><div class="tag">ГОНКА С БОТАМИ</div><h1>Думай на поворот вперёд.</h1><p id="hint">Все едут одновременно. Выбери манёвр и сделай ход.</p></div>
       <section class="race-order" aria-label="Позиции в гонке"><div class="order-title">ТВОЯ ПОЗИЦИЯ <strong id="position">1 / 4</strong></div><ol id="standings"></ol><p id="race-status" aria-live="polite">3 бота · общий ход</p></section>
       <div class="view-tools"><button id="camera" class="glass" title="Обзор трассы (M)">⊞ <span>Вся трасса</span></button></div>
@@ -38,9 +39,6 @@
     </aside>
   </main>
   <dialog id="help-dialog"><button class="close" id="close-help" aria-label="Закрыть">×</button><span class="eyebrow">БЫСТРО ЕХАТЬ ЛЕГКО</span><h2>А что будет после поворота?</h2><p>Выбери <b>газ или тормоз</b> и <b>поворот руля</b> одновременно. Яркий пунктир с цифрой <b>1</b> показывает выбранный манёвр. Полупрозрачная линия с цифрой <b>2</b> — ещё 1,2 секунды, если отпустить газ и поставить руль прямо. На асфальте скорость сохранится, на траве — снизится. <b>Это ориентир, второй ход выбираешь заново. Оба прогноза не учитывают будущие манёвры соперников.</b> Контакт может изменить траекторию и снизить скорость.</p><p>Каждый ход — <b>1,2 секунды</b>. Скорость сохраняется. На высокой скорости дуга становится шире: тормози до поворота.</p><p>Три бота выбирают газ и руль по тем же правилам. Все четыре машины едут одновременно после «Конца хода». Место определяется по пройденным створам и порядку пересечения финиша.</p><p>Трава замедляет машину и снижает сцепление. Продолжай управлять, чтобы вернуться на асфальт. Проезжай контрольные створы по порядку, следуя стрелкам трассы.</p><div class="help-keys">↑ ↓ газ / тормоз · ← → руль<br>Пробел — ход · M — обзор · R — заново</div><button id="lets-race" class="primary">Поехали ↗</button></dialog>
-  <script src="src/physics.js"></script>
-  <script src="src/race.js"></script>
-  <script src="src/planning.js"></script>
-  <script src="src/main.js"></script>
+  <script type="module" src="src/main.mjs"></script>
 </body>
 </html>
