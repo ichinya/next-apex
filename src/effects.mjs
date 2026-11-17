@@ -18,4 +18,5 @@ export class RaceEffects{
   this.batch.update(delta);
  }
  get stats(){return {library:'three.quarks',systems:this.dust.length+1,particles:this.dust.reduce((sum,d)=>sum+d.system.particleNum,0)+this.sparks.particleNum,emittedFrames:this.emittedFrames};}
+ dispose(){for(const system of [...this.dust.map(d=>d.system),this.sparks]){system.material.dispose();system.dispose();}this.texture.dispose();}
 }

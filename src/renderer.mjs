@@ -7,6 +7,12 @@ import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
 import {createScenery} from './scenery.mjs';
 import {RaceEffects} from './effects.mjs';
 const S=.1;
+function disposeScene(scene){
+ const geometries=new Set(),materials=new Set(),textures=new Set();
+ scene.traverse(object=>{if(object.geometry)geometries.add(object.geometry);for(const material of (Array.isArray(object.material)?object.material:[object.material]).filter(Boolean))materials.add(material);if(object.isInstancedMesh)object.dispose();object.shadow?.dispose();});
+ for(const material of materials){for(const value of Object.values(material))if(value?.isTexture)textures.add(value);material.dispose();}
+ geometries.forEach(geometry=>geometry.dispose());textures.forEach(texture=>texture.dispose());scene.clear();
+}
 export class RaceRenderer{
  static async create(canvas,P,racers){const view=new RaceRenderer(canvas,P);Object.assign(view,await createScenery(P,racers));view.finishSetup(racers);return view;}
  constructor(canvas,P){
@@ -24,6 +30,16 @@ export class RaceRenderer{
   racers.forEach(r=>{const label=document.createElement('span');label.className='racer-label';label.textContent=r.name;label.style.color=r.color;this.layer.appendChild(label);this.labels.push(label);});
   this.badges=[1,2].map(n=>{const label=document.createElement('span');label.className='prediction-badge';label.textContent=n;this.layer.appendChild(label);return label;});
   this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(this.canvas);this.resize();
+ }
+ async setCourse(P,racers){
+  // Keep the WebGL context, post-processing, labels and resize observer alive.
+  const scenery=await createScenery(P,racers),previous=this.scene;
+  previous.remove(this.predictions);this.effects.dispose();
+  Object.assign(this,scenery);this.scene.add(this.predictions);
+  this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.autoUpdate=false;this.sun.shadow.needsUpdate=true;
+  this.composer.setMainScene(this.scene);this.ao.scene=this.scene;
+  this.effects=new RaceEffects(this.scene,racers.length);this.first=this.second=null;this.started=false;
+  disposeScene(previous);this.invalidate();
  }
  resize(){const box=this.canvas.getBoundingClientRect();this.width=Math.max(1,box.width);this.height=Math.max(1,box.height);this.renderer.setSize(this.width,this.height,false);this.composer.setSize(this.width,this.height);this.predictions.traverse(o=>{if(o.material?.resolution)o.material.resolution.set(this.width,this.height);});this.invalidate();}
  invalidate(){this.dirty=true;this.cameraMoving=true;}
@@ -70,5 +86,5 @@ export class RaceRenderer{
   if(this.slowFrames>=24&&this.pixelRatio>.65){this.pixelRatio=Math.max(.65,this.pixelRatio*.8);this.renderer.setPixelRatio(this.pixelRatio);this.resize();this.slowFrames=0;}
   return {aim,playerScreenX:(this.project(visual.x*S,0,visual.y*S).x*.5+.5)*this.width};
  }
- get stats(){return {engine:'Three.js',revision:THREE.REVISION,modelURL:this.modelURL,cars:this.models.length,trees:this.treeCount,forestChunks:this.forestChunks,carMeshes:this.carMeshes,pixelRatio:this.pixelRatio,postprocessing:this.composer.passes.length,ambientOcclusion:this.ao.enabled,particles:this.effects.stats,frames:this.frames,renderMilliseconds:Math.round(this.renderMilliseconds*10)/10,drawCalls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles};}
+ get stats(){return {engine:'Three.js',revision:THREE.REVISION,course:this.P.course.id,modelURL:this.modelURL,cars:this.models.length,trees:this.treeCount,forestChunks:this.forestChunks,carMeshes:this.carMeshes,pixelRatio:this.pixelRatio,postprocessing:this.composer.passes.length,ambientOcclusion:this.ao.enabled,particles:this.effects.stats,frames:this.frames,renderMilliseconds:Math.round(this.renderMilliseconds*10)/10,drawCalls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles,memory:{...this.renderer.info.memory}};}
 }

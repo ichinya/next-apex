@@ -24,34 +24,35 @@ function ribbon(P,width,material,height){
 }
 function instances(scene,geometry,material,count){const m=new THREE.InstancedMesh(geometry,material,count);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;}
 export async function createScenery(P,racers){
- const scene=new THREE.Scene();scene.background=new THREE.Color('#8b9e78');
- const groundMap=texture(4451,'#647345','grass');groundMap.repeat.set(55,55);
+ const theme=P.course.theme;
+ const scene=new THREE.Scene();scene.background=new THREE.Color(theme.background);
+ const groundMap=texture(4451,theme.grass,'grass');groundMap.repeat.set(55,55);
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(260,250),standard('#ffffff',{map:groundMap}));ground.rotation.x=-Math.PI/2;ground.position.set(80,-.05,75);ground.receiveShadow=true;scene.add(ground);
- const gravelMap=texture(72,'#9b967a','gravel');
+ const gravelMap=texture(72,theme.gravel,'gravel');
  scene.add(ribbon(P,P.WIDTH+40,standard('#c3bda4',{map:gravelMap}),.005));
- scene.add(ribbon(P,P.WIDTH,standard('#ffffff',{map:texture(812,'#465052','asphalt')}),.035));
+ scene.add(ribbon(P,P.WIDTH,standard('#ffffff',{map:texture(812,theme.asphalt,'asphalt')}),.035));
  for(const side of [-1,1]){
   const kerbs=new THREE.Mesh(createKerbGeometry(P,side),standard('#ffffff',{vertexColors:true}));kerbs.name=`kerb-${side}`;kerbs.receiveShadow=true;scene.add(kerbs);
  }
  // Guardrails and posts form two inexpensive instanced draws per side.
  for(const side of [-1,1]){
   const count=Math.ceil(P.length/27),rails=instances(scene,new THREE.BoxGeometry(1,.25,.13),standard('#9da9a0',{metalness:.6,roughness:.5}),count),posts=instances(scene,new THREE.BoxGeometry(.12,.74,.14),standard('#5c6d64',{metalness:.5}),count),o=new THREE.Object3D();
-  for(let i=0;i<count;i++){const p=P.at(i*P.length/count),q=P.at((i+1)*P.length/count),offset=87*side;const x=((p.x+q.x)/2-Math.sin(p.angle)*offset)*S,z=((p.y+q.y)/2+Math.cos(p.angle)*offset)*S;o.position.set(x,.65,z);o.rotation.y=-p.angle;o.scale.set(Math.hypot(q.x-p.x,q.y-p.y)*S+.06,1,1);o.updateMatrix();rails.setMatrixAt(i,o.matrix);o.position.set((p.x-Math.sin(p.angle)*offset)*S,.37,(p.y+Math.cos(p.angle)*offset)*S);o.scale.set(1,1,1);o.updateMatrix();posts.setMatrixAt(i,o.matrix);}
+  for(let i=0;i<count;i++){const p=P.at(i*P.length/count),q=P.at((i+1)*P.length/count),offset=(P.WIDTH/2+29)*side;const x=((p.x+q.x)/2-Math.sin(p.angle)*offset)*S,z=((p.y+q.y)/2+Math.cos(p.angle)*offset)*S;o.position.set(x,.65,z);o.rotation.y=-p.angle;o.scale.set(Math.hypot(q.x-p.x,q.y-p.y)*S+.06,1,1);o.updateMatrix();rails.setMatrixAt(i,o.matrix);o.position.set((p.x-Math.sin(p.angle)*offset)*S,.37,(p.y+Math.cos(p.angle)*offset)*S);o.scale.set(1,1,1);o.updateMatrix();posts.setMatrixAt(i,o.matrix);}
  }
  const start=P.at(0),checks=instances(scene,new THREE.BoxGeometry(.6,.012,.94),standard('#ffffff'),36),o=new THREE.Object3D();
- let k=0;for(let row=0;row<3;row++)for(let col=0;col<12;col++){const x=row*.6-.9,z=col*.94-5.17;o.position.set(start.x*S+Math.cos(start.angle)*x-Math.sin(start.angle)*z,.05,start.y*S+Math.sin(start.angle)*x+Math.cos(start.angle)*z);o.rotation.y=-start.angle;o.updateMatrix();checks.setMatrixAt(k,o.matrix);checks.setColorAt(k++,new THREE.Color((row+col)%2?'#25312f':'#e0e0c8'));}checks.castShadow=false;
+ let k=0;for(let row=0;row<3;row++)for(let col=0;col<12;col++){const x=row*.6-.9,z=(col-5.5)*P.WIDTH*S/12;o.position.set(start.x*S+Math.cos(start.angle)*x-Math.sin(start.angle)*z,.05,start.y*S+Math.sin(start.angle)*x+Math.cos(start.angle)*z);o.rotation.y=-start.angle;o.scale.set(1,1,P.WIDTH*S/12/.94);o.updateMatrix();checks.setMatrixAt(k,o.matrix);checks.setColorAt(k++,new THREE.Color((row+col)%2?'#25312f':'#e0e0c8'));}checks.castShadow=false;
  // Direction arrows are painted into the road, rather than floating UI.
  const arrowShape=new THREE.Shape();arrowShape.moveTo(-.7,-.55);arrowShape.lineTo(0,0);arrowShape.lineTo(-.7,.55);arrowShape.lineTo(-.5,.7);arrowShape.lineTo(.35,0);arrowShape.lineTo(-.5,-.7);arrowShape.closePath();
  const arrowGeo=new THREE.ShapeGeometry(arrowShape);arrowGeo.rotateX(-Math.PI/2);
  for(let s=150;s<P.length;s+=310){const p=P.at(s),arrow=new THREE.Mesh(arrowGeo,new THREE.MeshBasicMaterial({color:'#c7cfb3',transparent:true,opacity:.35,depthWrite:false}));arrow.position.set(p.x*S,.052,p.y*S);arrow.rotation.y=-p.angle;scene.add(arrow);}
  // A mixed, volumetric canopy with individual trunks and three crown layers.
- const random=randomGenerator(14351),trees=[];
- for(let i=0;i<3100;i++){const x=random()*2300-350,z=random()*2200-350,r=18+random()*21;if(P.nearest(x,z).distance<105+r*.8)continue;trees.push({x:x*S,z:z*S,r:r*S,h:3.2+random()*4.5,pine:random()<.24,tint:random()});}
+ const random=randomGenerator(P.course.seed),trees=[];
+ for(let i=0;i<theme.trees;i++){const x=random()*2300-350,z=random()*2200-350,r=18+random()*21;if(P.nearest(x,z).distance<P.WIDTH/2+47+r*.8)continue;trees.push({x:x*S,z:z*S,r:r*S,h:3.2+random()*4.5,pine:random()<(P.course.id==='serpentine'?.8:.24),tint:random()});}
  // Spatial batches let both the camera and the shadow camera cull the forest.
  // One world-sized InstancedMesh submits every tree even with most offscreen.
- const chunks=new Map(),trunkGeometry=new THREE.CylinderGeometry(.17,.26,1,7),crownGeometry=new THREE.IcosahedronGeometry(1,1),trunkMaterial=standard('#53432e'),crownMaterial=standard('#ffffff',{flatShading:true});
+ const chunks=new Map(),trunkGeometry=new THREE.CylinderGeometry(.17,.26,1,7),crownGeometry=new THREE.IcosahedronGeometry(1,1),trunkMaterial=standard(theme.trunk),crownMaterial=standard('#ffffff',{flatShading:true});
  trees.forEach((t,i)=>{const key=`${Math.floor(t.x/24)},${Math.floor(t.z/24)}`;if(!chunks.has(key))chunks.set(key,[]);chunks.get(key).push({...t,index:i});});
- const greens=['#4c7138','#5e7e3e','#78934e','#3d653c','#7b8b49'];
+ const greens=theme.greens;
  for(const batch of chunks.values()){
  const trunks=instances(scene,trunkGeometry,trunkMaterial,batch.length),crowns=instances(scene,crownGeometry,crownMaterial,batch.length*3);
  batch.forEach((t,i)=>{
@@ -60,10 +61,10 @@ export async function createScenery(P,racers){
  });
  trunks.computeBoundingSphere();crowns.computeBoundingSphere();
  }
- const rocks=[];for(let i=0;i<110;i++){const x=150+random()*1250,z=100+random()*1250;if(P.nearest(x,z).distance<100)continue;rocks.push({x:x*S,z:z*S,scale:.3+random()*.65});}
- const rockMesh=instances(scene,new THREE.DodecahedronGeometry(1,0),standard('#8a8d76',{flatShading:true}),rocks.length);rocks.forEach((r,i)=>{o.position.set(r.x,r.scale*.35,r.z);o.scale.set(r.scale,r.scale*.65,r.scale*.8);o.rotation.set(i*.3,i*.7,0);o.updateMatrix();rockMesh.setMatrixAt(i,o.matrix);});
- const sun=new THREE.DirectionalLight('#fff1c9',2.8);sun.position.set(30,90,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=sun.shadow.camera.bottom=-65;sun.shadow.camera.right=sun.shadow.camera.top=65;sun.shadow.camera.near=1;sun.shadow.camera.far=220;sun.shadow.bias=-.0004;sun.shadow.normalBias=.035;sun.shadow.radius=3;scene.add(sun,sun.target);
- scene.add(new THREE.HemisphereLight('#d8e8ed','#5b593d',2.5));
+ const rocks=[];for(let i=0;i<theme.rocks;i++){const x=150+random()*1250,z=100+random()*1250;if(P.nearest(x,z).distance<P.WIDTH/2+42)continue;rocks.push({x:x*S,z:z*S,scale:(P.course.id==='serpentine'?.65:.3)+random()*(P.course.id==='serpentine'?1.3:.65)});}
+ const rockMesh=instances(scene,new THREE.DodecahedronGeometry(1,0),standard(theme.rock,{flatShading:true}),rocks.length);rocks.forEach((r,i)=>{o.position.set(r.x,r.scale*.35,r.z);o.scale.set(r.scale,r.scale*.65,r.scale*.8);o.rotation.set(i*.3,i*.7,0);o.updateMatrix();rockMesh.setMatrixAt(i,o.matrix);});
+ const sun=new THREE.DirectionalLight(theme.sun,2.8);sun.position.set(30,90,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=sun.shadow.camera.bottom=-65;sun.shadow.camera.right=sun.shadow.camera.top=65;sun.shadow.camera.near=1;sun.shadow.camera.far=220;sun.shadow.bias=-.0004;sun.shadow.normalBias=.035;sun.shadow.radius=3;scene.add(sun,sun.target);
+ scene.add(new THREE.HemisphereLight(theme.sky,theme.ambient,2.5));
  const carAsset=await new GLTFLoader().loadAsync(CAR_URL),models=[];
  // Bake the stationary car parts once per material, retaining separate steering
  // wheels. The original Blender geometry and its lighting remain unchanged.
@@ -85,7 +86,7 @@ export async function createScenery(P,racers){
  }
  const marker=new THREE.Mesh(new THREE.RingGeometry(2.55,2.66,48),new THREE.MeshBasicMaterial({color:'#9cddff',transparent:true,opacity:.9,depthWrite:false,depthTest:false}));marker.rotation.x=-Math.PI/2;marker.renderOrder=12;scene.add(marker);
  const gateGroup=new THREE.Group(),gateMaterial=standard('#b9e377',{emissive:'#45531c',emissiveIntensity:.2});
- for(const side of [-1,1]){const cone=new THREE.Mesh(new THREE.ConeGeometry(.25,.65,6),gateMaterial);cone.position.set(0,.35,side*5.95);gateGroup.add(cone);}scene.add(gateGroup);
+ for(const side of [-1,1]){const cone=new THREE.Mesh(new THREE.ConeGeometry(.25,.65,6),gateMaterial);cone.position.set(0,.35,side*(P.WIDTH*S/2+.15));gateGroup.add(cone);}scene.add(gateGroup);
  // Static scenery matrices never need to be rebuilt during a turn.
  scene.updateMatrixWorld(true);scene.traverse(object=>{if(object.isInstancedMesh||object===ground)object.matrixAutoUpdate=false;});
  return {scene,models,sun,marker,gateGroup,treeCount:trees.length,forestChunks:chunks.size,carMeshes:carTemplate.children.length,modelURL:CAR_URL};

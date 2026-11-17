@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict'),P=require('../src/physics.js');
 (async()=>{
  const {createKerbGeometry}=await import('../src/kerbs.mjs');
+ for(const course of P.courses){P.setCourse(course.id);
  for(const side of [-1,1]){
   const geometry=createKerbGeometry(P,side),position=geometry.getAttribute('position'),normal=geometry.getAttribute('normal'),color=geometry.getAttribute('color');
   const tileCount=position.count/12;assert.ok(tileCount>P.track.length*.9&&tileCount<=P.track.length);
@@ -30,5 +31,7 @@ const assert=require('node:assert/strict'),P=require('../src/physics.js');
   for(let i=0;i<tileCount;i++)for(let j=i+2;j<tileCount;j++)if(!(i===0&&j===tileCount-1))assert.equal(overlaps(tiles[i],tiles[j]),false,'Non-adjacent tiles do not fold over each other');
   geometry.dispose();
  }
- console.log('PASS: both kerbs have exact closed seams, upward faces and no adjacent or non-adjacent top overlaps');
+ }
+ P.setCourse('forest');
+ console.log('PASS: all three courses have closed kerb seams, upward faces and no overlapping kerb tiles');
 })().catch(error=>{console.error(error);process.exitCode=1;});

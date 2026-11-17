@@ -11,7 +11,7 @@
   return {first,second};
  }
  function cameraTarget(state,first,second,racers,width,height,overview=false){
-  if(overview)return {x:810,y:750,z:Math.min(width/1450,height/1400)};
+  if(overview){const b=P.bounds;return {x:(b.minX+b.maxX)/2,y:(b.minY+b.maxY)/2,z:Math.min(width/(b.maxX-b.minX+100),height/(b.maxY-b.minY+100))};}
   const road=P.nearest(state.x,state.y),horizon=Math.max(150,state.v*P.TURN*2.3);
   const points=[state];
   for(let i=1;i<=6;i++)points.push(P.at(road.s+horizon*i/6));
