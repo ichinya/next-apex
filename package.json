@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "pretest": "node -e \"require('node:fs').mkdirSync('output', {recursive: true})\"",
     "test": "node tests/physics.cjs && node tests/spatial.cjs && node tests/kerbs.cjs && node tests/planning.cjs && node tests/rapier.cjs && node tests/bots.cjs && node tests/interface.cjs"
   },
   "dependencies": {
