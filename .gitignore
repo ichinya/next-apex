@@ -8,4 +8,5 @@ dist/
 output/
 .env
 .playwright-cli/
+.playwright-mcp/
 .repowise/
