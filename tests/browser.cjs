@@ -17,6 +17,7 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
  async function turn(throttle,steer){await choose(throttle,steer);await click('#commit');await wait('!window.Apex.getState().animating');}
  try{
   await send('Runtime.enable');await send('Log.enable');await send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false});await send('Page.reload',{ignoreCache:true});await wait('!!window.Apex?.getDiagnostics().ready');
+  assert.ok(await evaluate('window.Apex.getState().menuOpen'),'The game opens in the main menu');await click('#menu-start');assert.equal(await evaluate('window.Apex.getState().menuOpen'),false);
   await shot('stack-start');const start=await evaluate('window.Apex.getDiagnostics()');
   assert.equal(start.renderer.revision,'187');assert.equal(start.renderer.cars,4);assert.ok(start.renderer.trees>0);assert.ok(start.renderer.modelURL.includes('/blender/'));assert.ok(start.renderer.postprocessing>=3&&start.renderer.ambientOcclusion);assert.equal(start.renderer.particles.systems,5);assert.equal(start.physics.version,'0.21.0');
   const idle=await evaluate('JSON.stringify(window.Apex.getRacers())');await sleep(1800);assert.equal(await evaluate('JSON.stringify(window.Apex.getRacers())'),idle);

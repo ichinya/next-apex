@@ -11,6 +11,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
   for(const [width,height] of [[1280,800],[960,600]]){
    await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await send('Page.reload',{ignoreCache:true});
    for(let n=0;n<150;n++){if(await evaluate('!!window.Apex?.getDiagnostics().ready'))break;await delay(80);}
+   await evaluate('document.getElementById("menu-start").click()');
    const result=await evaluate(`(()=>{const panel=document.querySelector('.dashboard'),header=document.querySelector('.topbar').getBoundingClientRect();return {width:innerWidth,height:innerHeight,scroll:panel.scrollHeight-panel.clientHeight,header:header.bottom,top:document.getElementById('phase').getBoundingClientRect().top,button:document.getElementById('commit').getBoundingClientRect().bottom,restart:document.getElementById('restart').getBoundingClientRect().bottom,ready:window.Apex.getDiagnostics().ready};})()`);
    assert.equal(result.ready,true);assert.ok(result.top>=result.header);assert.ok(result.restart<=height,'Restart fits without scrolling');assert.ok(result.button<=height,'Commit fits without scrolling');checks.push(result);
    const image=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});fs.writeFileSync(`output/stack-layout-${width}.png`,Buffer.from(image.data,'base64'));

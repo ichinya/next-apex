@@ -6,14 +6,15 @@
   <meta name="theme-color" content="#141d20">
   <title>Апекс — пошаговая гонка</title>
   <link rel="stylesheet" href="src/style.css">
+  <link rel="stylesheet" href="src/menu.css">
 </head>
-<body>
-  <header class="topbar">
+<body class="menu-active">
+  <header class="topbar" id="game-header" inert>
     <div class="brand"><span class="brand-icon">A<span>↗</span></span><div><strong>АПЕКС</strong><small>ПОШАГОВАЯ ГОНКА</small></div></div>
     <div class="track-title"><i></i><div>Лесное кольцо<small>Ты и 3 соперника · 1 круг</small></div></div>
-    <div class="top-actions"><button id="sound" class="subtle sound-button" aria-label="Выключить звук" title="Выключить звук" aria-pressed="true">♫</button><button id="help" class="subtle" aria-label="Как играть">? <span>Как играть</span></button></div>
+    <div class="top-actions"><button id="sound" class="subtle sound-button" aria-label="Выключить звук" title="Выключить звук" aria-pressed="true">♫</button><button id="help" class="subtle" aria-label="Как играть">? <span>Как играть</span></button><button id="menu-toggle" class="subtle menu-toggle" title="Главное меню (Esc)" aria-haspopup="dialog" aria-controls="main-menu">☰ <span>Меню</span></button></div>
   </header>
-  <main>
+  <main id="game-content" inert>
     <section class="race-view" aria-label="Гоночная трасса">
       <canvas id="race" aria-label="Синяя машина на лесной трассе. Зелёная линия показывает следующий манёвр."></canvas>
       <div id="boot" class="boot"><span class="eyebrow">ЛЕСНОЕ КОЛЬЦО</span><h2>Готовим машины к старту…</h2><p>Три соперника. Один круг. Каждый манёвр имеет значение.</p><span class="boot-line"></span></div>
@@ -38,6 +39,36 @@
       <div class="bottom-actions"><span id="completed">Сделано ходов: 0</span><button id="restart" title="Начать заново (R)">↻ Заново</button></div>
     </aside>
   </main>
+  <dialog id="main-menu" class="main-menu" open aria-labelledby="menu-title" aria-describedby="menu-summary">
+    <div class="menu-shell">
+      <div class="menu-top"><span class="menu-wordmark">A↗ <span>ПОШАГОВАЯ ГОНКА</span></span><span class="menu-edition">ЛЕСНОЕ КОЛЬЦО / 01</span></div>
+      <div class="menu-grid">
+        <section class="menu-intro">
+          <span class="eyebrow">ТЫ. ТРИ СОПЕРНИКА. ОДИН КРУГ.</span>
+          <h1 id="menu-title">АПЕКС<span aria-hidden="true">↗</span></h1>
+          <p class="menu-lead">Думай на поворот вперёд.</p>
+          <p id="menu-summary" class="menu-summary">Выбирай газ, тормоз и руль.<br>Все четыре машины едут одновременно.</p>
+          <nav class="menu-actions" aria-label="Главное меню">
+            <button id="menu-start" class="primary menu-start" disabled aria-describedby="menu-status" autofocus>Готовим трассу… <span aria-hidden="true">↗</span></button>
+            <button id="menu-new" class="menu-secondary" hidden>Новая гонка <span aria-hidden="true">↻</span></button>
+            <div class="menu-options"><button id="menu-help" class="menu-secondary">Как играть <span aria-hidden="true">?</span></button><button id="menu-sound" class="menu-secondary menu-sound" aria-label="Звук" aria-pressed="true"><span>Звук</span><strong id="menu-sound-state">ВКЛ</strong></button></div>
+          </nav>
+          <p id="menu-status" class="menu-status" role="status" aria-live="polite" data-state="loading">Готовим трассу и машины…</p>
+          <button id="menu-retry" class="menu-secondary" hidden>Повторить загрузку ↻</button>
+        </section>
+        <section class="menu-track" aria-label="Лесное кольцо">
+          <div class="menu-track-heading"><span class="eyebrow">ТРАССА 01</span><span class="menu-track-number" aria-hidden="true">01</span><h2>Лесное кольцо</h2><p>Асфальт. Лес. Решающий поворот.</p></div>
+          <svg viewBox="280 100 1090 1310" role="img" aria-label="Схема трассы Лесное кольцо">
+            <defs><path id="menu-course" d="M400 850 C370 650 350 400 410 320 S540 200 630 200 L940 200 Q1140 210 1180 340 T1200 550 Q1170 690 1040 690 T820 610 Q690 630 700 750 T870 930 Q960 980 1110 980 T1260 1140 Q1280 1290 1100 1300 T780 1310 Q600 1290 520 1190 T410 1030 Z"/></defs>
+            <use href="#menu-course" class="menu-course-shoulder"/><use href="#menu-course" class="menu-course-road"/><use href="#menu-course" class="menu-course-line"/>
+            <path class="menu-start-line" d="M368 850 L432 845"/><circle id="menu-grid-marker" cx="400" cy="822" r="19" class="menu-grid-marker"/><circle cx="400" cy="822" r="7" class="menu-grid-center"/>
+          </svg>
+          <div class="menu-track-details"><span><strong>4</strong> машины</span><span><strong>1</strong> круг</span><span><strong>0</strong> км/ч на старте</span></div>
+        </section>
+      </div>
+      <div class="menu-footer"><span id="menu-best">Твой первый заезд начинается здесь.</span><span class="menu-shortcuts"><span><kbd>↑ ↓</kbd> газ и тормоз</span><span><kbd>← →</kbd> руль</span><span><kbd>Esc</kbd> меню</span></span></div>
+    </div>
+  </dialog>
   <dialog id="help-dialog"><button class="close" id="close-help" aria-label="Закрыть">×</button><span class="eyebrow">БЫСТРО ЕХАТЬ ЛЕГКО</span><h2>А что будет после поворота?</h2><p>Выбери <b>газ или тормоз</b> и <b>поворот руля</b> одновременно. Яркий пунктир с цифрой <b>1</b> показывает выбранный манёвр. Полупрозрачная линия с цифрой <b>2</b> — ещё 1,2 секунды, если отпустить газ и поставить руль прямо. На асфальте скорость сохранится, на траве — снизится. <b>Это ориентир, второй ход выбираешь заново. Оба прогноза не учитывают будущие манёвры соперников.</b> Контакт может изменить траекторию и снизить скорость.</p><p>Каждый ход — <b>1,2 секунды</b>. Скорость сохраняется. На высокой скорости дуга становится шире: тормози до поворота.</p><p>Три бота выбирают газ и руль по тем же правилам. Все четыре машины едут одновременно после «Конца хода». Место определяется по пройденным створам и порядку пересечения финиша.</p><p>Трава замедляет машину и снижает сцепление. Продолжай управлять, чтобы вернуться на асфальт. Проезжай контрольные створы по порядку, следуя стрелкам трассы.</p><div class="help-keys">↑ ↓ газ / тормоз · ← → руль<br>Пробел — ход · M — обзор · R — заново</div><button id="lets-race" class="primary">Поехали ↗</button></dialog>
   <script type="module" src="src/main.mjs"></script>
 </body>
