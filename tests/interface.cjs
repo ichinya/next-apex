@@ -13,6 +13,6 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
  assert.ok(s.reset());assert.equal(s.turns,0);assert.equal(s.review,null);assert.deepEqual(s.racers,grid);
  let clock=5000;
  for(const [throttle,steer] of JSON.parse(fs.readFileSync('tests/race-replay.json','utf8'))){s.select('throttle',throttle);s.select('steer',steer);s.commit(()=>clock);clock+=1200;s.advance(clock);}
- assert.ok(s.state.finished,'The complete lap reaches the finish');assert.equal(s.best,s.turns);assert.equal(s.commit(()=>clock),false,'Finished races cannot add another turn');assert.equal(s.review.position,1);const best=s.best;s.reset();assert.equal(s.best,best);assert.equal(s.state.finished,false);
+ assert.ok(s.state.finished,'The complete lap reaches the finish');assert.equal(s.best,s.turns);assert.equal(s.commit(()=>clock),false,'Finished races cannot add another turn');assert.equal(s.review.position,globalThis.Race.standings(s.racers).findIndex(r=>r.id==='player')+1);const best=s.best;s.reset();assert.equal(s.best,best);assert.equal(s.state.finished,false);
  const report='PASS: real Rapier controller; 4 simultaneous cars; planning freeze; input and reset locks; no double turn; exact preview; neutral second continuation; turn review; full race; finish order; best result; restart';fs.writeFileSync('output/interface-test-report.txt',report);console.log(report);
 })().catch(e=>{console.error(e);process.exitCode=1;});

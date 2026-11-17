@@ -33,7 +33,7 @@
  }
  function at(s){s=(s%length+length)%length;let low=0,high=track.length;while(low+1<high){const mid=(low+high)>>1;if(track[mid].s<=s)low=mid;else high=mid;}const p=track[low],u=(s-p.s)/p.len;return {x:p.x+p.dx*u,y:p.y+p.dy*u,angle:p.angle}}
  const gates=Array.from({length:12},(_,i)=>at(length*(i+1)/12));
- function start(){const p=at(28);return {x:p.x,y:p.y,heading:p.angle,motion:p.angle,v:70,nextGate:0,finished:false,elapsed:0}}
+ function start(){const p=at(28);return {x:p.x,y:p.y,heading:p.angle,motion:p.angle,v:0,nextGate:0,finished:false,elapsed:0}}
  function angleDiff(a,b){return Math.atan2(Math.sin(a-b),Math.cos(a-b))}
  function advanceGates(prev,s){
   s.nextGate=prev.nextGate;s.finished=prev.finished;

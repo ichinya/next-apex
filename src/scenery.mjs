@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {createKerbGeometry} from './kerbs.mjs';
 const S=.1;
 export const CAR_URL=`${import.meta.env.BASE_URL}assets/blender/41bd9781-8e6b-4535-89a1-3876273f0b20/model.glb`;
 function randomGenerator(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};}
@@ -30,9 +31,7 @@ export async function createScenery(P,racers){
  scene.add(ribbon(P,P.WIDTH+40,standard('#c3bda4',{map:gravelMap}),.005));
  scene.add(ribbon(P,P.WIDTH,standard('#ffffff',{map:texture(812,'#465052','asphalt')}),.035));
  for(const side of [-1,1]){
-  const n=P.track.length,kerbs=instances(scene,new THREE.BoxGeometry(1,.12,.75),standard('#ffffff'),n),o=new THREE.Object3D();
-  for(let i=0;i<n;i++){const p=P.track[i],q=P.track[(i+1)%n],offset=side*(P.WIDTH/2+3.7);o.position.set(((p.x+q.x)/2-Math.sin(p.angle)*offset)*S,.075,((p.y+q.y)/2+Math.cos(p.angle)*offset)*S);o.rotation.y=-p.angle;o.scale.set(p.len*S+.025,1,1);o.updateMatrix();kerbs.setMatrixAt(i,o.matrix);kerbs.setColorAt(i,new THREE.Color(Math.floor(p.s/22)%2?'#d2d5bf':'#b94c35'));}
-  kerbs.castShadow=false;
+  const kerbs=new THREE.Mesh(createKerbGeometry(P,side),standard('#ffffff',{vertexColors:true}));kerbs.name=`kerb-${side}`;kerbs.receiveShadow=true;scene.add(kerbs);
  }
  // Guardrails and posts form two inexpensive instanced draws per side.
  for(const side of [-1,1]){

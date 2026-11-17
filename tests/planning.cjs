@@ -1,7 +1,7 @@
 (async()=>{const {initializePhysics}=await import('../src/rapier.mjs');await initializePhysics();
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const P=require('../src/physics.js'),R=require('../src/race.js'),T=require('../src/planning.js');
-const initial=P.start(),snapshot=structuredClone(initial);
+const initial={...P.start(),v:70},snapshot=structuredClone(initial);
 for(const throttle of [-2,0,2])for(const steer of [-2,0,2]){
  const {first,second}=T.predict(initial,throttle,steer);
  assert.deepEqual(second,P.simulate(first.state,0,0),'Second line is coasting with a straight wheel, not repeating the first command');

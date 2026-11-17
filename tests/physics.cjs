@@ -1,9 +1,10 @@
 const assert=require('node:assert/strict');
 const P=require('../src/physics.js');
 const initial=P.start();
-const coast=P.simulate(initial,0,0),fast=P.simulate(initial,2,0),brake=P.simulate(initial,-2,0);
+const moving={...initial,v:70};
+const coast=P.simulate(moving,0,0),fast=P.simulate(moving,2,0),brake=P.simulate(moving,-2,0);
 assert.equal(coast.samples.length,73,'Every turn must have the same duration');
-assert.ok(Math.abs(coast.state.v-initial.v)<1e-9,'Coasting preserves asphalt speed');
+assert.ok(Math.abs(coast.state.v-moving.v)<1e-9,'Coasting preserves asphalt speed');
 assert.ok(fast.distance>coast.distance&&coast.distance>brake.distance,'Speed determines distance per turn');
 assert.ok(brake.state.v>=0,'Braking must not reverse the car');
 assert.deepEqual(initial,P.start(),'Prediction must not mutate the starting state');
@@ -13,7 +14,7 @@ assert.deepEqual(replay,P.simulate(initial,2,1).state,'Preview and executed step
 const low=P.simulate({...initial,v:55},0,2),high=P.simulate({...initial,v:210},0,2);
 const curvature=a=>Math.abs(a.state.heading-initial.heading)/a.distance;
 assert.ok(curvature(low)>curvature(high)*2,'Fast cars need a wider turning radius');
-const grass={...initial,x:200,y:800};
+const grass={...moving,x:200,y:800};
 assert.ok(P.nearest(grass.x,grass.y).distance>P.WIDTH/2);
 const grassMove=P.simulate(grass,0,1);
 assert.ok(grassMove.state.v<grass.v&&grassMove.distance>0,'The shoulder slows movement without skipping a turn');
